@@ -191,6 +191,35 @@ class LoanReturnTest {
     }
 
     @Test
+    void concurrentReturnAndCheckoutOfSameCopyKeepLoanAndInventoryConsistent() throws Exception {
+        BookCopy copy = copy("借还交错 " + token());
+        Loan originalLoan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
+                reader.getReaderNo(), copy.getBarcode());
+        ReaderProfile nextReader = reader();
+
+        List<Boolean> outcomes = race(
+                () -> returns.returnByLoanId(librarian.getId(), UserRole.LIBRARIAN, originalLoan.getId()),
+                () -> checkout.checkout(secondLibrarian.getId(), UserRole.LIBRARIAN,
+                        nextReader.getReaderNo(), copy.getBarcode()));
+
+        assertTrue(outcomes.get(0), "并发借出不能阻止原借阅完成归还");
+        boolean checkedOutAgain = outcomes.get(1);
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM loan WHERE id = ? AND returned_at IS NOT NULL " +
+                "AND return_operator_id = ?", Integer.class, originalLoan.getId(), librarian.getId()));
+        assertEquals(checkedOutAgain ? 1 : 0,
+                jdbc.queryForObject("SELECT COUNT(*) FROM loan WHERE copy_id = ? AND returned_at IS NULL",
+                        Integer.class, copy.getId()));
+        assertEquals(checkedOutAgain ? 2 : 1,
+                jdbc.queryForObject("SELECT COUNT(*) FROM loan WHERE copy_id = ?", Integer.class, copy.getId()));
+        assertEquals(checkedOutAgain ? BookCopyStatus.ON_LOAN : BookCopyStatus.AVAILABLE,
+                copies.findById(copy.getId()).orElseThrow().getStatus());
+        if (checkedOutAgain) {
+            assertEquals(nextReader.getId(), jdbc.queryForObject(
+                    "SELECT reader_id FROM loan WHERE copy_id = ? AND returned_at IS NULL", Long.class, copy.getId()));
+        }
+    }
+
+    @Test
     void failedCopyUpdateRollsBackReturnTimestampAndOperator() {
         BookCopy copy = copy("归还故障回滚 " + token());
         Loan loan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
@@ -216,8 +245,14 @@ class LoanReturnTest {
         mvc.perform(get("/staff/loans/return").session(staffSession))
                 .andExpect(status().isOk()).andExpect(view().name("loan/return"))
                 .andExpect(content().string(containsString("借阅编号")));
+        assertNull(jdbc.queryForObject("SELECT returned_at FROM loan WHERE id = ?", java.sql.Timestamp.class, loan.getId()),
+                "GET 归还页面不能结束借阅");
+        assertEquals(BookCopyStatus.ON_LOAN, copies.findById(copy.getId()).orElseThrow().getStatus());
         mvc.perform(post("/staff/loans/return").session(staffSession).param("loanId", loan.getId().toString()))
                 .andExpect(status().isForbidden());
+        assertNull(jdbc.queryForObject("SELECT returned_at FROM loan WHERE id = ?", java.sql.Timestamp.class, loan.getId()),
+                "缺少 CSRF 令牌时不得归还");
+        assertEquals(BookCopyStatus.ON_LOAN, copies.findById(copy.getId()).orElseThrow().getStatus());
         mvc.perform(post("/staff/loans/return").with(csrf()).session(staffSession)
                         .param("loanId", loan.getId().toString()).param("barcode", copy.getBarcode()))
                 .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/staff/loans/return"))

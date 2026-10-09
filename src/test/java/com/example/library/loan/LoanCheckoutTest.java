@@ -138,6 +138,23 @@ class LoanCheckoutTest {
     }
 
     @Test
+    void checkingOutOneOfTwoCopiesLeavesTheOtherCopyAvailable() {
+        Book book = book("两册书目 " + token());
+        BookCopy borrowedCopy = copyFor(book, "两册借出");
+        BookCopy availableCopy = copyFor(book, "两册留存");
+
+        Loan loan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
+                reader.getReaderNo(), borrowedCopy.getBarcode());
+
+        assertEquals(borrowedCopy.getId(), loan.getCopyId());
+        assertEquals(BookCopyStatus.ON_LOAN, copies.findById(borrowedCopy.getId()).orElseThrow().getStatus());
+        assertEquals(BookCopyStatus.AVAILABLE, copies.findById(availableCopy.getId()).orElseThrow().getStatus());
+        assertEquals(2, copies.countByBook_IdAndStatusNot(book.getId(), BookCopyStatus.WITHDRAWN));
+        assertEquals(1, copies.countByBook_IdAndStatus(book.getId(), BookCopyStatus.AVAILABLE));
+        assertEquals(1, loans.countByReader_IdAndReturnedAtIsNull(reader.getId()));
+    }
+
+    @Test
     void checkoutRejectsDisabledOverdueFullDuplicateTitleAndUnavailableCopy() {
         BookCopy firstCopy = copy("同书目规则 " + token());
         BookCopy secondCopy = copyFor(books.findById(firstCopy.getBookId()).orElseThrow(), "同书目另一册");
@@ -186,6 +203,11 @@ class LoanCheckoutTest {
                 .andExpect(status().isForbidden());
 
         MockHttpSession staffSession = login(librarian);
+        long loansBeforeGet = loans.count();
+        mvc.perform(get("/staff/loans/checkout").session(staffSession))
+                .andExpect(status().isOk()).andExpect(view().name("loan/checkout"));
+        assertEquals(loansBeforeGet, loans.count(), "GET 借出页面不能创建借阅记录");
+        assertEquals(BookCopyStatus.AVAILABLE, copies.findById(copy.getId()).orElseThrow().getStatus());
         mvc.perform(post("/staff/loans/checkout").session(staffSession)
                         .param("readerNo", reader.getReaderNo()).param("barcode", copy.getBarcode()))
                 .andExpect(status().isForbidden());

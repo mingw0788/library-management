@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书检索 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">馆藏目录</p><h1 class="hero-title">查找图书</h1>
+        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。检索仅展示有效书目；可借数量由在架副本实时汇总。</p>
+        <p th:if="${error}" th:text="${error}" role="alert"></p>
+        <form method="get" th:action="@{/catalog}">
+            <p><label for="catalog-query">关键词</label><br><input id="catalog-query" name="q" maxlength="100" th:value="${query}" placeholder="书名、作者或 ISBN"></p>
+            <p><label for="catalog-category">分类</label><br><select id="catalog-category" name="categoryId">
+                <option value="">全部分类</option>
+                <option th:each="category : ${categories}" th:value="${category.id}" th:text="${category.name}" th:selected="${categoryId != null and category.id == categoryId}"></option>
+            </select></p>
+            <p><label for="catalog-sort">排序</label><br><select id="catalog-sort" name="sort">
+                <option value="titleAsc" th:selected="${sort == 'titleAsc'}">书名升序</option>
+                <option value="titleDesc" th:selected="${sort == 'titleDesc'}">书名降序</option>
+                <option value="authorAsc" th:selected="${sort == 'authorAsc'}">作者升序</option>
+                <option value="authorDesc" th:selected="${sort == 'authorDesc'}">作者降序</option>
+                <option value="dateAsc" th:selected="${sort == 'dateAsc'}">出版日期从早到晚</option>
+                <option value="dateDesc" th:selected="${sort == 'dateDesc'}">出版日期从晚到早</option>
+            </select></p>
+            <p><label for="catalog-size">每页数量（最多 100）</label><br><input id="catalog-size" name="size" type="number" min="1" max="100" th:value="${pageSize}"></p>
+            <button type="submit">检索</button><a th:href="@{/catalog}">清除条件</a>
+        </form>
+    </section>
+    <section class="info-card">
+        <h2 class="card-title">检索结果</h2>
+        <p>共 <span th:text="${booksPage.totalElements}"></span> 本；当前第 <span th:text="${booksPage.number + 1}"></span> / <span th:text="${booksPage.totalPages == 0 ? 1 : booksPage.totalPages}"></span> 页。</p>
+        <p th:if="${booksPage.empty}">没有找到符合条件的有效书目。</p>
+        <article th:each="book : ${booksPage.content}" class="reader-row">
+            <p><strong><a th:href="@{/catalog/{id}(id=${book.id})}" th:text="${book.title}"></a></strong></p>
+            <p>作者：<span th:text="${book.author}"></span> · 分类：<span th:text="${categoryNames[book.categoryId]}"></span></p>
+            <div th:with="counts=${inventory[book.id]}">
+                <p>可借 <strong th:text="${counts.available}"></strong> 册 · 在册总数 <span th:text="${counts.total() - counts.withdrawn}"></span> 册</p>
+            </div>
+        </article>
+        <nav th:if="${booksPage.totalPages > 1}" aria-label="检索结果分页" class="pagination">
+            <a th:if="${booksPage.hasPrevious()}" th:href="@{/catalog(q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=${booksPage.number - 1})}">上一页</a>
+            <span th:each="number : ${#numbers.sequence(0, booksPage.totalPages - 1)}">
+                <a th:if="${number != booksPage.number}" th:href="@{/catalog(q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=${number})}" th:text="${number + 1}"></a>
+                <strong th:if="${number == booksPage.number}" th:text="${number + 1}" aria-current="page"></strong>
+            </span>
+            <a th:if="${booksPage.hasNext()}" th:href="@{/catalog(q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=${booksPage.number + 1})}">下一页</a>
+        </nav>
+        <p><a th:href="@{/}">返回首页</a></p>
+    </section>
+</main></body></html>

@@ -30,6 +30,6 @@ class HomePageTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
                 .andExpect(content().string(containsString("图书管理系统")))
                 .andExpect(content().string(containsString("系统已成功启动")))
-                .andExpect(content().string(containsString("首页已就绪")));
+                .andExpect(content().string(containsString("馆藏目录已开放")));
     }
 }

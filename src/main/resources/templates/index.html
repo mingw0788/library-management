@@ -23,7 +23,7 @@
             </div>
         </div>
         <div class="account-actions">
-            <span class="status-badge"><span class="status-dot" aria-hidden="true"></span>基础首页已就绪</span>
+            <span class="status-badge"><span class="status-dot" aria-hidden="true"></span>馆藏目录已开放</span>
             <a th:if="${!authenticated}" th:href="@{/login}">登录</a>
             <form th:if="${authenticated}" method="post" th:action="@{/logout}">
                 <span class="card-copy" th:text="${loginName}"></span>
@@ -38,6 +38,7 @@
             <h1 class="hero-title" id="welcome-title">图书管理系统</h1>
             <p class="hero-description">系统已成功启动</p>
             <p class="hero-description">从一本书开始，让馆藏与阅读的每一次相遇都有记录。</p>
+            <p th:if="${authenticated}"><a class="catalog-link" th:href="@{/catalog}">检索馆藏图书</a></p>
         </section>
 
         <section class="overview-grid" aria-label="系统简介与当前进度">
@@ -53,9 +54,9 @@
             </article>
             <article class="info-card">
                 <p class="card-label">当前进度</p>
-                <h2 class="card-title">基础页面完成</h2>
-                <p class="card-copy">首页现已可访问，图书与借阅功能将按开发计划逐步开放。</p>
-                <span class="card-status">首页已就绪</span>
+                <h2 class="card-title">图书目录可检索</h2>
+                <p class="card-copy">书目、馆藏副本、检索和详情已开放；借阅服务将按计划逐步建设。</p>
+                <span class="card-status">目录已开放</span>
             </article>
         </section>
     </main>

@@ -119,6 +119,9 @@ button:hover { background: #24594c; }
 form + form { margin-top: 20px; }
 .reader-row { padding: 20px 0; border-top: 1px solid var(--line); }
 .reader-row form { margin: 12px 0; }
+.pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 18px 0; }
+.pagination a, .pagination strong { min-width: 34px; text-align: center; }
+.catalog-link { display: inline-block; padding: 10px 16px; border-radius: 8px; background: var(--ink); color: white; text-decoration: none; }
 
 .page-footer { padding: 22px 0 28px; border-top: 1px solid var(--line); }
 .footer-note { margin: 0; font-size: 12px; color: var(--muted); }

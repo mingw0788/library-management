@@ -26,6 +26,13 @@ public interface BookCopyRepository extends JpaRepository<BookCopy, Long> {
     List<BookCopy> findMatchingWithBook(@Param("query") String query);
 
     long countByBook_IdAndStatusNot(Long bookId, BookCopyStatus status);
+    long countByBook_IdAndStatus(Long bookId, BookCopyStatus status);
+
+    @Query("select new com.example.library.catalog.CatalogCopyView(c.shelfLocation, c.status) " +
+            "from BookCopy c where c.book.id = :bookId and c.status <> :withdrawn " +
+            "order by c.status, c.shelfLocation, c.id")
+    List<CatalogCopyView> findCatalogCopies(@Param("bookId") Long bookId,
+                                            @Param("withdrawn") BookCopyStatus withdrawn);
 
     @Query("select new com.example.library.catalog.BookCopySummary(c.book.id, c.status, count(c)) " +
             "from BookCopy c where c.book.id in :bookIds group by c.book.id, c.status")

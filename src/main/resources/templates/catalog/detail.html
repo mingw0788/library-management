@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>书目详情 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">馆藏目录 · 当前账号：<span th:text="${loginName}"></span></p>
+        <h1 class="hero-title" th:text="${detail.book.title}"></h1>
+        <p class="hero-description">作者：<span th:text="${detail.book.author}"></span> · 分类：<span th:text="${detail.category.name}"></span></p>
+    </section>
+    <section class="info-card">
+        <h2 class="card-title">书目资料</h2>
+        <p>出版社：<span th:text="${detail.book.publisher == null ? '未填写' : detail.book.publisher}"></span></p>
+        <p>出版日期：<span th:text="${detail.book.publishedDate == null ? '未填写' : detail.book.publishedDate}"></span></p>
+        <p>ISBN：<span th:text="${detail.book.isbn == null ? '未填写' : detail.book.isbn}"></span></p>
+        <p>简介：<span th:text="${detail.book.description == null ? '暂无简介' : detail.book.description}"></span></p>
+        <p>当前可借：<strong th:text="${detail.availableCount}"></strong> 册</p>
+        <h2 class="card-title">馆藏副本</h2>
+        <p th:if="${#lists.isEmpty(detail.copies)}">目前没有可流通副本。</p>
+        <article th:each="copy : ${detail.copies}" class="reader-row">
+            <p>状态：<strong th:text="${copy.status == T(com.example.library.catalog.BookCopyStatus).AVAILABLE ? '可借' : '借出中'}"></strong></p>
+            <p>馆藏位置：<span th:text="${copy.shelfLocation == null ? '未填写' : copy.shelfLocation}"></span></p>
+        </article>
+        <p><a th:href="@{/catalog}">返回检索目录</a></p>
+    </section>
+</main></body></html>

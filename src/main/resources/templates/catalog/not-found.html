@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>未找到书目 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell"><section class="hero">
+    <p class="eyebrow">馆藏目录</p><h1 class="hero-title">没有找到书目</h1>
+    <p class="hero-description" th:text="${message}"></p>
+    <p><a th:href="@{/catalog}">返回检索目录</a></p>
+</section></main></body></html>

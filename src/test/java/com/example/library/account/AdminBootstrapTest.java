@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -35,9 +34,9 @@ class AdminBootstrapTest {
         String loginName = "bootstrap_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         assertFalse(users.existsByRole(UserRole.ADMIN));
         AdminBootstrapRunner firstStart = new AdminBootstrapRunner(true, loginName, "first-pass-12345",
-                "首次管理员", users, accounts);
+                "首次管理员", accounts);
         AdminBootstrapRunner repeatedStart = new AdminBootstrapRunner(true, loginName, "second-pass-67890",
-                "不应覆盖", users, accounts);
+                "不应覆盖", accounts);
 
         try {
             firstStart.initializeIfNecessary();
@@ -61,31 +60,26 @@ class AdminBootstrapTest {
 
     @Test
     void enabledBootstrapWithoutCredentialsFailsWithoutCreatingAnAccount() {
-        AppUserRepository repository = mock(AppUserRepository.class);
         AccountService service = mock(AccountService.class);
-        when(repository.existsByRole(UserRole.ADMIN)).thenReturn(false);
-        AdminBootstrapRunner runner = new AdminBootstrapRunner(true, "", "", "", repository, service);
+        AdminBootstrapRunner runner = new AdminBootstrapRunner(true, "", "", "", service);
 
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> runner.run(new DefaultApplicationArguments(new String[0])));
 
         assertTrue(exception.getMessage().contains("LIBRARY_INITIAL_ADMIN_USERNAME"));
-        verify(service, never()).createUser(org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.any());
+        verify(service, never()).initializeFirstAdmin(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
     void disabledBootstrapDoesNothing() {
         AppUserRepository repository = mock(AppUserRepository.class);
         AccountService service = mock(AccountService.class);
-        AdminBootstrapRunner runner = new AdminBootstrapRunner(false, "name", "password", "显示名", repository, service);
+        AdminBootstrapRunner runner = new AdminBootstrapRunner(false, "name", "password", "显示名", service);
 
         runner.initializeIfNecessary();
 
-        verify(repository, never()).existsByRole(UserRole.ADMIN);
-        verify(service, never()).createUser(org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.any());
+        verify(service, never()).initializeFirstAdmin(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
     }
 }

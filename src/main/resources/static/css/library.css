@@ -95,6 +95,15 @@ input {
     color: var(--ink);
     font: inherit;
 }
+select {
+    min-width: 180px;
+    padding: 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: white;
+    color: var(--ink);
+    font: inherit;
+}
 input:focus { outline: 3px solid #d5e5d8; border-color: #59865e; }
 button {
     margin: 8px 8px 0 0;
@@ -108,6 +117,8 @@ button {
 }
 button:hover { background: #24594c; }
 form + form { margin-top: 20px; }
+.reader-row { padding: 20px 0; border-top: 1px solid var(--line); }
+.reader-row form { margin: 12px 0; }
 
 .page-footer { padding: 22px 0 28px; border-top: 1px solid var(--line); }
 .footer-note { margin: 0; font-size: 12px; color: var(--muted); }

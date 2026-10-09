@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>读者管理 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">管理员与馆员</p><h1 class="hero-title">读者账号与档案</h1>
+        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。读者证号创建后保持不变；初始或重置密码须由读者首次登录时修改。</p>
+        <p th:if="${notice}" th:text="${notice}"></p><p th:if="${error}" th:text="${error}" role="alert"></p>
+        <form method="post" th:action="@{/staff/readers}">
+            <p><label>登录名</label><br><input name="loginName" required minlength="3" maxlength="50" autocomplete="off"></p>
+            <p><label>初始密码</label><br><input name="initialPassword" type="password" required minlength="12" maxlength="64" autocomplete="new-password"></p>
+            <p><label>姓名</label><br><input name="displayName" required maxlength="100"></p>
+            <p><label>读者证号</label><br><input name="readerNo" required maxlength="50"></p>
+            <p><label>联系方式（可选）</label><br><input name="contact" maxlength="100"></p>
+            <button type="submit">创建读者</button>
+        </form>
+    </section>
+    <section class="info-card">
+        <h2 class="card-title">读者档案</h2>
+        <p th:if="${#lists.isEmpty(readers)}">暂无读者档案。</p>
+        <div th:each="reader : ${readers}" class="reader-row">
+            <p><strong th:text="${reader.displayName}"></strong> · 证号 <span th:text="${reader.readerNo}"></span> · <span th:text="${reader.status}"></span></p>
+            <form method="post" th:action="@{/staff/readers/{id}/update(id=${reader.userId})}">
+                <label>姓名</label><br><input name="displayName" required maxlength="100" th:value="${reader.displayName}">
+                <label>联系方式</label><br><input name="contact" maxlength="100" th:value="${reader.contact}">
+                <button type="submit">保存资料</button>
+            </form>
+            <form method="post" th:action="@{/staff/readers/{id}/reset-password(id=${reader.userId})}">
+                <label>新临时密码</label><br><input name="newPassword" type="password" required minlength="12" maxlength="64" autocomplete="new-password">
+                <button type="submit">重置密码</button>
+            </form>
+            <form method="post" th:if="${reader.status == 'ACTIVE'}" th:action="@{/staff/readers/{id}/disable(id=${reader.userId})}">
+                <button type="submit">禁用账号</button>
+            </form>
+        </div>
+        <p><a th:href="@{/staff}">返回工作人员工作区</a></p>
+    </section>
+</main></body></html>

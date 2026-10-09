@@ -1,12 +1,14 @@
 # 图书管理系统
 
-当前提供 T02 的最小中文首页，并在 T03 建立了 MySQL/JPA/Flyway 数据库基础，使用 Spring Boot 4.1.1、Spring MVC 和 Thymeleaf。
+当前已完成 T01—T07，提供中文首页、登录和强制改密、角色授权、工作人员与读者管理；使用 Spring Boot 4.1.1、Spring MVC、Thymeleaf、MySQL、JPA 和 Flyway。
 
 ## 当前进度
 
 - T02：创建启动入口、首页、样式、Maven Wrapper 和首页自动测试；构建、实际 HTTP、桌面及 390px 窄屏浏览器验证均通过。实际验收记录见 [开发进度](docs/progress.md)。
 - T01：环境检查已完成；本机 MySQL 8.0.44 与隔离的 dev/test 数据库及受限账号均已验证。
 - T03：MySQL 8.0.44、JPA、Flyway、dev/test/prod 配置隔离和第一份迁移已建立；真实测试记录见 [开发进度](docs/progress.md)。
+- T04—T06：账号密码模型、登录/退出、首次管理员初始化、统一权限与会话有效性已完成。
+- T07：管理员可管理工作人员；管理员和馆员可创建、维护、禁用、重置读者；读者账号与档案采用独立表并在同一事务中创建。
 
 ## 环境
 

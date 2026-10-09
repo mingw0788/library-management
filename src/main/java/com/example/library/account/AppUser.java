@@ -90,6 +90,14 @@ public class AppUser {
         incrementCredentialVersion();
     }
 
+    public void changeDisplayName(String displayName) {
+        if (displayName == null || displayName.isBlank()
+                || displayName.trim().codePointCount(0, displayName.trim().length()) > 100) {
+            throw new IllegalArgumentException("姓名长度须为 1—100 个字符");
+        }
+        this.displayName = displayName.trim();
+    }
+
     public void markPasswordChanged() {
         this.mustChangePassword = false;
         incrementCredentialVersion();

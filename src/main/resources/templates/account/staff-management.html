@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作人员账号管理 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">仅管理员可用</p><h1 class="hero-title">工作人员账号</h1>
+        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。创建或重置后请通过安全方式把临时密码交给本人。</p>
+        <p th:if="${notice}" th:text="${notice}"></p><p th:if="${error}" th:text="${error}" role="alert"></p>
+        <form method="post" th:action="@{/admin/accounts}">
+            <p><label>登录名</label><br><input name="loginName" required minlength="3" maxlength="50" autocomplete="off"></p>
+            <p><label>初始密码</label><br><input name="initialPassword" type="password" required minlength="12" maxlength="64" autocomplete="new-password"></p>
+            <p><label>姓名</label><br><input name="displayName" required maxlength="100"></p>
+            <p><label>角色</label><br><select name="role" required><option value="LIBRARIAN">馆员</option><option value="ADMIN">管理员</option></select></p>
+            <button type="submit">创建工作人员</button>
+        </form>
+    </section>
+    <section class="info-card">
+        <h2 class="card-title">现有工作人员</h2>
+        <p th:if="${#lists.isEmpty(staff)}">暂无工作人员账号。</p>
+        <div th:each="account : ${staff}" class="reader-row">
+            <p><strong th:text="${account.displayName}"></strong>（<span th:text="${account.loginName}"></span>） · <span th:text="${account.role}"></span> · <span th:text="${account.status}"></span></p>
+            <form method="post" th:action="@{/admin/accounts/{id}/reset-password(id=${account.id})}">
+                <label>新临时密码</label><br><input name="newPassword" type="password" required minlength="12" maxlength="64" autocomplete="new-password">
+                <button type="submit">重置密码</button>
+            </form>
+            <form method="post" th:if="${account.status.name() == 'ACTIVE'}" th:action="@{/admin/accounts/{id}/disable(id=${account.id})}">
+                <button type="submit">禁用账号</button>
+            </form>
+        </div>
+        <p><a th:href="@{/admin}">返回管理员工作区</a></p>
+    </section>
+</main></body></html>

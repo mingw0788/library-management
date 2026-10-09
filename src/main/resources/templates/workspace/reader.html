@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>读者工作区 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body>
+<main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">读者工作区</p>
+        <h1 class="hero-title">我的图书</h1>
+        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>；读者账号 ID：<span th:text="${readerUserId}"></span>。本人数据查询将在后续步骤实现。</p>
+        <p><a th:href="@{/}">返回首页</a></p>
+    </section>
+</main>
+</body>
+</html>

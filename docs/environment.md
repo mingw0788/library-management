@@ -1,6 +1,6 @@
 # 开发环境基线
 
-检查日期：2026-10-09（Asia/Shanghai）。T03 已完成真实 MySQL 接入与迁移验收；T01 的认证和专用库缺项已补齐。
+检查日期：2026-10-09（Asia/Shanghai）。T03—T05 已完成数据库迁移和账号登录流程验收；T01 的认证和专用库缺项已补齐。
 
 ## 1. 项目与工作区
 
@@ -49,8 +49,8 @@ Spring Boot 4.1.1 官方声明支持 Java 17—26、Maven 3.6.3 及以上，因�
 
 | 用途 | Profile | 数据库名称 | 账号边界 | 当前状态 |
 |---|---|---|---|---|
-| 开发 | dev | `library_dev` | 专用开发账号，仅访问开发库 | 8.0.44 已连接；V1 迁移成功 |
-| 自动测试 | test | `library_test` | 独立测试账号，仅访问测试库 | 8.0.44 已连接；V1 迁移成功并通过回归 |
+| 开发 | dev | `library_dev` | 专用开发账号，仅访问开发库 | 8.0.44 已连接；V1、V2 迁移及 Hibernate 结构校验成功 |
+| 自动测试 | test | `library_test` | 独立测试账号，仅访问测试库 | 8.0.44 已连接；V1、V2 迁移及登录/账号回归通过 |
 | 恢复演练 | 仅演练外部配置 | `library_restore_drill` | 独立演练账号，不覆盖开发/测试库 | T22 再创建和验证 |
 | 部署 | prod | 由部署目标决定，必须与前述库区分 | 最小权限；运行与迁移权限按目标分离 | T22 决定，未部署 |
 
@@ -59,7 +59,7 @@ Spring Boot 4.1.1 官方声明支持 Java 17—26、Maven 3.6.3 及以上，因�
 - 客户端没有加入 PATH，但可通过 `C:\Program Files\MySQL\MySQL_Server 8.0\bin\mysql.exe` 直接使用，无需重装。
 - 本机连接配置保存在项目 `.local/mysql-connection.json`，该目录整体忽略，不提交。模板见 [mysql-connection.example.json](../config/mysql-connection.example.json)。密码只在本机填写，不粘贴到聊天中。
 - 模板仅供环境准备读取，不表示 Spring Boot 会自动加载 JSON。T03 已将应用连接明确映射到 profile 专属环境变量，并提供 PowerShell 本机载入脚本。
-- 未来开发变量约定：`LIBRARY_DB_URL`、`LIBRARY_DB_USERNAME`、`LIBRARY_DB_PASSWORD`；测试使用独立的 `LIBRARY_TEST_DB_URL`、`LIBRARY_TEST_DB_USERNAME`、`LIBRARY_TEST_DB_PASSWORD`。
+- 应用实际连接变量：开发使用 `LIBRARY_DB_HOST`、`LIBRARY_DB_PORT`、`LIBRARY_DB_USERNAME`、`LIBRARY_DB_PASSWORD`；测试使用独立的 `LIBRARY_TEST_DB_HOST`、`LIBRARY_TEST_DB_PORT`、`LIBRARY_TEST_DB_USERNAME`、`LIBRARY_TEST_DB_PASSWORD`。本机脚本从忽略配置读入，固定连接到各自 schema。
 - T01 先进行只读连接检查。如专用库尚不存在，环境准备范围仅限新建本项目专用开发库、测试库和对应受限账号；保留现有数据库、账号与数据，不清库、不覆盖、不向业务表写数据。若发现同名现有业务库或权限冲突，停止相关操作并报告。
 - T03 重试以更正后的本机 provisioning 配置通过 TCP 连接 `127.0.0.1:3306`，确认 `root@localhost`、MySQL 8.0.44、会话 `REPEATABLE-READ` 及系统时区；只读检查确认不存在同名项目库/账号后，创建 `library_dev`、`library_test` 和各自 48 位随机密码的本机应用账号。没有清理、覆盖或修改其他数据库。
 
@@ -75,11 +75,12 @@ Spring Boot 4.1.1 官方声明支持 Java 17—26、Maven 3.6.3 及以上，因�
 
 ## 6. 初始凭据与待补齐项
 
-- 初始管理员在 T05 通过外部受控配置创建，密码不硬编码、不保存到 Git，首次登录强制修改；本次没有创建应用账号。
+- T05 提供了可选的首次管理员初始化：默认关闭；只有显式设置 `LIBRARY_INITIAL_ADMIN_ENABLED=true`，并提供 `LIBRARY_INITIAL_ADMIN_USERNAME`、`LIBRARY_INITIAL_ADMIN_PASSWORD`、`LIBRARY_INITIAL_ADMIN_DISPLAY_NAME` 后才会尝试创建。缺少任一项会明确启动失败，不生成默认密码；数据库中已有任何 ADMIN 记录时会跳过，不重建账号或重置密码。创建后首次登录强制修改密码。
+- 管理员初始化变量应由启动应用的当前受控环境临时提供或由部署平台密钥服务注入；不要把实际值写入仓库、脚本、日志或普通文档。确认首次账号可登录后，关闭初始化开关并清除临时密码变量。当前本机开发/测试环境没有启用初始化，没有创建常驻管理员账号。
 - 工作人员创建/重置密码采用当面或用户认可的私密方式交付。日志、审计和普通页面不长期保存明文密码；重置和改密使旧会话失效。
 - 用户要求代理直接填写后，已将其提供的管理凭据保存在 `.local/mysql-connection.json` 的 `provisioning` 段；最初值返回 1045，用户更正后只读登录通过。T03 仅在检查到专用库/账号不存在后新建 `library_dev`、`library_test` 及不同的受限应用账号；随机密码保存在同一被忽略文件的对应段。
 - 填写后先进行不写数据的身份/版本/权限/库名检查，确认连接的是本机目标实例；仅在专用库尚不存在且管理权限足够时准备独立库/账号，不修改已有库。
-- T01 环境准备已补齐管理连接、MySQL 版本、专用开发/测试库和权限核验；T02 已完成。T03 在 2026-10-09 获用户允许后进行，实际迁移与回归结果记录在 [progress.md](progress.md)。
+- T01 环境准备已补齐管理连接、MySQL 版本、专用开发/测试库和权限核验；T02—T05 已逐步完成。T03/T04/T05 的实际迁移与回归结果记录在 [progress.md](progress.md)。
 
 ## 7. 官方核验依据
 

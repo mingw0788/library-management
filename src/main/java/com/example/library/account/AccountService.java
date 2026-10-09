@@ -32,6 +32,17 @@ public class AccountService {
         return users.findByLoginName(LoginNameNormalizer.normalize(loginName));
     }
 
+    @Transactional
+    public void changeOwnPassword(String loginName, String currentPassword, String newPassword) {
+        AppUser user = users.findByLoginName(LoginNameNormalizer.normalize(loginName))
+                .orElseThrow(() -> new IllegalArgumentException("当前账号不存在"));
+        if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("当前密码不正确");
+        }
+        PasswordPolicy.validate(newPassword);
+        user.completePasswordChange(passwordEncoder.encode(newPassword));
+    }
+
     private static String normalizeDisplayName(String value) {
         if (value == null) {
             throw new IllegalArgumentException("姓名不能为空");

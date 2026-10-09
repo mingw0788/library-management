@@ -81,6 +81,15 @@ public class AppUser {
         incrementCredentialVersion();
     }
 
+    public void completePasswordChange(String passwordHash) {
+        if (passwordHash == null || passwordHash.isBlank()) {
+            throw new IllegalArgumentException("密码编码不能为空");
+        }
+        this.passwordHash = passwordHash;
+        this.mustChangePassword = false;
+        incrementCredentialVersion();
+    }
+
     public void markPasswordChanged() {
         this.mustChangePassword = false;
         incrementCredentialVersion();

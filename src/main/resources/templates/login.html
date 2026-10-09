@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>登录 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body>
+<main class="page-shell">
+    <section class="hero" aria-labelledby="login-title">
+        <p class="eyebrow">图书管理系统</p>
+        <h1 class="hero-title" id="login-title">账号登录</h1>
+        <p class="hero-description">请使用管理员提供的账号登录。</p>
+    </section>
+    <section class="info-card" aria-label="登录表单">
+        <p class="card-copy" role="alert" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+        <p class="card-copy" role="status" th:if="${noticeMessage}" th:text="${noticeMessage}"></p>
+        <form method="post" th:action="@{/login}">
+            <p>
+                <label for="username">登录名</label><br>
+                <input id="username" name="username" type="text" autocomplete="username" required minlength="3" maxlength="50">
+            </p>
+            <p>
+                <label for="password">密码</label><br>
+                <input id="password" name="password" type="password" autocomplete="current-password" required>
+            </p>
+            <button type="submit">登录</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

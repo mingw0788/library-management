@@ -22,7 +22,14 @@
                 <p class="brand-caption">让每一本书，都有迹可循</p>
             </div>
         </div>
-        <span class="status-badge"><span class="status-dot" aria-hidden="true"></span>基础首页已就绪</span>
+        <div class="account-actions">
+            <span class="status-badge"><span class="status-dot" aria-hidden="true"></span>基础首页已就绪</span>
+            <a th:if="${!authenticated}" th:href="@{/login}">登录</a>
+            <form th:if="${authenticated}" method="post" th:action="@{/logout}">
+                <span class="card-copy" th:text="${loginName}"></span>
+                <button type="submit">退出登录</button>
+            </form>
+        </div>
     </header>
 
     <main>

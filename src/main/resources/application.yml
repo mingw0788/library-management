@@ -19,6 +19,14 @@ spring:
     enabled: true
     validate-on-migrate: true
 
+library:
+  bootstrap:
+    admin:
+      enabled: ${LIBRARY_INITIAL_ADMIN_ENABLED:false}
+      username: ${LIBRARY_INITIAL_ADMIN_USERNAME:}
+      password: ${LIBRARY_INITIAL_ADMIN_PASSWORD:}
+      display-name: ${LIBRARY_INITIAL_ADMIN_DISPLAY_NAME:}
+
 server:
   port: 8080
   address: 127.0.0.1

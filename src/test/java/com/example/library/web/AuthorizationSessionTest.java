@@ -152,34 +152,34 @@ class AuthorizationSessionTest {
 
     @Test
     void disablingAnAccountOrChangingItsCredentialVersionInvalidatesOldReadAndWriteSessions() throws Exception {
-        for (boolean disable : List.of(false, true)) {
-            for (boolean writeRequest : List.of(false, true)) {
-                TestUser sessionUser = createUser(UserRole.READER);
-                MockHttpSession session = login(sessionUser);
+        for (UserRole role : List.of(UserRole.ADMIN, UserRole.LIBRARIAN, UserRole.READER)) {
+            for (boolean disable : List.of(false, true)) {
+                for (boolean writeRequest : List.of(false, true)) {
+                    TestUser sessionUser = createUser(role);
+                    MockHttpSession session = login(sessionUser);
 
-                AppUser changed = users.findById(sessionUser.id()).orElseThrow();
-                if (disable) {
-                    changed.changeStatus(UserStatus.DISABLED);
-                } else {
-                    changed.replacePasswordHash(passwordEncoder.encode("replacement-password-456"));
-                }
-                users.saveAndFlush(changed);
+                    AppUser changed = users.findById(sessionUser.id()).orElseThrow();
+                    if (disable) {
+                        changed.changeStatus(UserStatus.DISABLED);
+                    } else {
+                        changed.replacePasswordHash(passwordEncoder.encode("replacement-password-456"));
+                    }
+                    users.saveAndFlush(changed);
 
-                if (writeRequest) {
-                    mockMvc.perform(post("/account/password").with(csrf()).session(session)
-                                    .param("currentPassword", PASSWORD)
-                                    .param("newPassword", "new-password-789")
-                                    .param("confirmPassword", "new-password-789"))
-                            .andExpect(status().is3xxRedirection())
-                            .andExpect(redirectedUrl("/login?expired=true"));
-                } else {
-                    mockMvc.perform(get("/reader").session(session))
-                            .andExpect(status().is3xxRedirection())
-                            .andExpect(redirectedUrl("/login?expired=true"));
+                    if (writeRequest) {
+                        mockMvc.perform(post("/account/profile").with(csrf()).session(session)
+                                        .param("displayName", "不应写入"))
+                                .andExpect(status().is3xxRedirection())
+                                .andExpect(redirectedUrl("/login?expired=true"));
+                    } else {
+                        mockMvc.perform(get("/").session(session))
+                                .andExpect(status().is3xxRedirection())
+                                .andExpect(redirectedUrl("/login?expired=true"));
+                    }
+                    assertTrue(session.isInvalid());
+                    assertEquals("权限测试", users.findById(sessionUser.id()).orElseThrow().getDisplayName(),
+                            "过期会话不得继续读取或修改账号");
                 }
-                assertTrue(session.isInvalid());
-                users.deleteById(sessionUser.id());
-                createdUserIds.remove(sessionUser.id());
             }
         }
     }

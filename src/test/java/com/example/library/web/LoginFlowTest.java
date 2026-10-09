@@ -88,6 +88,7 @@ class LoginFlowTest {
         mockMvc.perform(post("/logout").with(csrf()).session(session))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login?logout=true"));
+        assertTrue(session.isInvalid());
         mockMvc.perform(get("/account/password").session(session))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));

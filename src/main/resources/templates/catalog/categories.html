@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分类管理 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">管理员与馆员</p><h1 class="hero-title">图书分类</h1>
+        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。名称会去除首尾空格；大小写和重音符号不区分，重复名称会被拒绝。</p>
+        <p th:if="${notice}" th:text="${notice}"></p><p th:if="${error}" th:text="${error}" role="alert"></p>
+        <form method="get" th:action="@{/staff/categories}">
+            <label for="category-query">按名称查找</label><br>
+            <input id="category-query" name="q" maxlength="100" th:value="${query}">
+            <button type="submit">查询</button>
+            <a th:href="@{/staff/categories}">显示全部</a>
+        </form>
+        <form method="post" th:action="@{/staff/categories}">
+            <label for="new-category-name">新增分类名称</label><br>
+            <input id="new-category-name" name="name" required maxlength="100">
+            <button type="submit">新增分类</button>
+        </form>
+    </section>
+    <section class="info-card">
+        <h2 class="card-title">分类列表</h2>
+        <p th:if="${#lists.isEmpty(categories)}">没有匹配的分类。</p>
+        <div th:each="category : ${categories}" class="reader-row">
+            <p>分类编号 <span th:text="${category.id}"></span></p>
+            <form method="post" th:action="@{/staff/categories/{id}/rename(id=${category.id})}">
+                <label>名称</label><br><input name="name" required maxlength="100" th:value="${category.name}">
+                <button type="submit">保存修改</button>
+            </form>
+            <form method="post" th:action="@{/staff/categories/{id}/delete(id=${category.id})}">
+                <button type="submit">删除分类</button>
+            </form>
+        </div>
+        <p><a th:href="@{/staff}">返回工作人员工作区</a></p>
+    </section>
+</main></body></html>

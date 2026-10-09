@@ -3,3 +3,12 @@ spring:
     url: jdbc:mysql://${LIBRARY_PROD_DB_HOST}:${LIBRARY_PROD_DB_PORT:3306}/library_prod?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&preserveInstants=true&characterEncoding=UTF-8&useUnicode=true
     username: ${LIBRARY_PROD_DB_USERNAME}
     password: ${LIBRARY_PROD_DB_PASSWORD}
+
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: true
+        same-site: lax

@@ -15,5 +15,10 @@
     "database": "library_test",
     "username": "",
     "password": ""
+  },
+  "recovery": {
+    "database": "library_restore_drill",
+    "username": "library_restore_app",
+    "password": ""
   }
 }

@@ -1,6 +1,6 @@
 # 图书管理系统
 
-当前已完成 T01—T18，提供中文首页、登录和强制改密、角色授权、工作人员/读者、分类、书目、副本管理、检索目录、馆员借还、本人/全馆借阅查询、关键操作审计、本人资料和密码管理及按角色显示的统计首页。使用 Spring Boot 4.1.1、Spring MVC、Thymeleaf、MySQL、JPA 和 Flyway。
+当前已完成 T01—T22，提供中文首页、登录和强制改密、角色授权、工作人员/读者、分类、书目、副本管理、检索目录、馆员借还、本人/全馆借阅查询、关键操作审计、本人资料和密码管理、统计首页以及安全、并发、性能、部署配置和独立库恢复验收。使用 Spring Boot 4.1.1、Spring MVC、Thymeleaf、MySQL、JPA 和 Flyway。本地部署与恢复说明见[部署与恢复](docs/deployment-recovery.md)。
 
 ## 当前进度
 
@@ -20,6 +20,10 @@
 - T16：关键成功业务操作写入审计，管理员可分页查询；安全日志不记录凭据或查询参数。
 - T17：三种角色可维护本人资料并主动修改密码；强制改密和旧会话失效规则继续生效。
 - T18：管理员/馆员工作区显示全馆书目、馆藏和借阅统计，读者工作区仅显示本人未还与逾期概况。
+- T19：表单字段反馈、错误页面、分页和窄屏体验已通过桌面/手机浏览器检查。
+- T20：安全回归覆盖角色授权、本人数据、CSRF、旧会话失效、XSS 转义和日志脱敏。
+- T21：真实 MySQL 并发与回滚回归通过；20 个会话访问列表/详情满足性能目标。
+- T22：已完成可执行 JAR、prod 外部配置及独立演练库恢复；三角色登录和借还闭环通过。
 
 ## 环境
 
@@ -102,6 +106,7 @@ java -jar target\library-management-0.0.1-SNAPSHOT.jar --server.port=8081
 - [需求与权限规则](docs/requirements.md)
 - [开发环境与数据库约定](docs/environment.md)
 - [数据库结构与并发约定](docs/database.md)
+- [部署与恢复说明](docs/deployment-recovery.md)
 - [逐步验收与剩余问题](docs/progress.md)
 
-本机数据库凭据只放在被忽略的 `.local/` 目录，公开 JSON 示例不包含真实值。应用只从当前激活 profile 对应的环境变量读取连接信息：dev 固定连接 `library_dev`，test 固定连接 `library_test`，prod 固定连接由部署环境单独提供的 `library_prod`；缺少变量时启动失败。开发和测试数据库账号都没有其他库的权限。不要把 provisioning 管理连接用于应用运行。
+本机数据库凭据只放在被忽略的 `.local/` 目录，公开 JSON 示例不包含真实值。应用只从当前激活 profile 对应的环境变量读取连接信息：dev 固定连接 `library_dev`，test 固定连接 `library_test`，prod 固定连接由部署环境单独提供的 `library_prod`；缺少变量时启动失败。开发、测试和恢复演练账号分别只访问各自数据库。不要把 provisioning 管理连接用于应用运行。

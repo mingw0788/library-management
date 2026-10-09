@@ -81,6 +81,17 @@ public class Loan {
         this.version = 0;
     }
 
+    public void returnTo(Instant returnedAt, AppUser returnOperator) {
+        if (this.returnedAt != null || returnedAt == null || returnOperator == null) {
+            throw new IllegalArgumentException("该借阅已归还或归还资料不完整");
+        }
+        if (returnedAt.isBefore(borrowedAt)) {
+            throw new IllegalArgumentException("归还时刻不能早于借出时刻");
+        }
+        this.returnedAt = returnedAt;
+        this.returnOperator = returnOperator;
+    }
+
     @PrePersist
     @PreUpdate
     private void validate() {

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>办理归还 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">管理员与馆员</p>
+        <h1 class="hero-title">办理归还</h1>
+        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。可输入借阅编号或馆藏条码其中一项。禁用读者的未还图书仍可由工作人员办理归还。</p>
+        <p th:if="${notice}" th:text="${notice}" role="status"></p>
+        <p th:if="${error}" th:text="${error}" role="alert"></p>
+        <form method="post" th:action="@{/staff/loans/return}">
+            <p><label for="loan-id">借阅编号</label><br>
+                <input id="loan-id" name="loanId" type="number" min="1" inputmode="numeric"></p>
+            <p>或</p>
+            <p><label for="copy-barcode">馆藏条码</label><br>
+                <input id="copy-barcode" name="barcode" maxlength="50" autocomplete="off"></p>
+            <button type="submit">确认归还</button>
+        </form>
+        <p>提交时系统会重新核对借阅和副本状态；重复归还不会再次改变库存。</p>
+        <p><a th:href="@{/staff/loans/checkout}">办理借出</a>　<a th:href="@{/staff/copies}">查看实体副本</a>　<a th:href="@{/staff}">返回工作人员工作区</a></p>
+    </section>
+</main></body></html>

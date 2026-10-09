@@ -72,6 +72,13 @@ public class BookCopy {
         status = BookCopyStatus.ON_LOAN;
     }
 
+    public void returnFromLoan() {
+        if (status != BookCopyStatus.ON_LOAN) {
+            throw new IllegalArgumentException("该副本当前没有借出，不能办理归还");
+        }
+        status = BookCopyStatus.AVAILABLE;
+    }
+
     @PrePersist
     @PreUpdate
     private void validate() {

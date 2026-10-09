@@ -41,6 +41,6 @@
             </form>
             <p th:if="${copy.status.name() == 'WITHDRAWN'}">副本已注销，不会计入可借数量。</p>
         </article>
-        <p><a th:href="@{/staff/books}">返回书目管理</a>　<a th:href="@{/staff/loans/checkout}">办理借出</a>　<a th:href="@{/staff}">返回工作人员工作区</a></p>
+        <p><a th:href="@{/staff/books}">返回书目管理</a>　<a th:href="@{/staff/loans/checkout}">办理借出</a>　<a th:href="@{/staff/loans/return}">办理归还</a>　<a th:href="@{/staff}">返回工作人员工作区</a></p>
     </section>
 </main></body></html>

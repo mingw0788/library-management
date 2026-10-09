@@ -120,7 +120,13 @@ public class AccountService {
     @Transactional
     public void disableReader(UserRole actorRole, Long userId) {
         requireReaderManager(actorRole);
-        requireReader(userId).changeStatus(UserStatus.DISABLED);
+        if (userId == null) throw new IllegalArgumentException("账号编号不能为空");
+        AppUser reader = users.findByIdForUpdate(userId)
+                .orElseThrow(() -> new IllegalArgumentException("账号不存在"));
+        if (reader.getRole() != UserRole.READER || readerProfiles.findByUserId(userId).isEmpty()) {
+            throw new IllegalArgumentException("目标账号不是有效读者");
+        }
+        reader.changeStatus(UserStatus.DISABLED);
     }
 
     @Transactional

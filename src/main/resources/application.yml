@@ -20,6 +20,10 @@ spring:
     validate-on-migrate: true
 
 library:
+  circulation:
+    maximum-active-loans: 5
+    loan-period-days: 14
+    business-time-zone: Asia/Shanghai
   bootstrap:
     admin:
       enabled: ${LIBRARY_INITIAL_ADMIN_ENABLED:false}

@@ -1,6 +1,6 @@
 # 图书管理系统
 
-当前已完成 T01—T11，提供中文首页、登录和强制改密、角色授权、工作人员/读者、分类、书目、副本管理及检索目录；使用 Spring Boot 4.1.1、Spring MVC、Thymeleaf、MySQL、JPA 和 Flyway。
+当前已完成 T01—T12，提供中文首页、登录和强制改密、角色授权、工作人员/读者、分类、书目、副本管理、检索目录及借阅模型和规则；借出/归还办理页面尚未实现。使用 Spring Boot 4.1.1、Spring MVC、Thymeleaf、MySQL、JPA 和 Flyway。
 
 ## 当前进度
 
@@ -13,6 +13,7 @@
 - T09：管理员和馆员可维护书目资料、校验 ISBN、归档书目；MySQL 外键已禁止删除正在被书目引用的分类，书目版本号用于拒绝过期编辑。
 - T10：管理员和馆员可逐册登记、查询和注销实体副本；条码唯一，数量从副本状态汇总，未注销副本会阻止书目归档。
 - T11：所有登录用户可按关键词和分类检索有效书目、排序分页并查看详情；页面显示馆藏位置、状态和可借数量。
+- T12：建立借阅记录结构、活动借阅副本唯一约束、集中借期/额度/资格规则和统一数据库锁顺序；借出与归还办理留待 T13/T14。数据库约定见 [数据库结构与并发约定](docs/database.md)。
 
 ## 环境
 
@@ -37,7 +38,7 @@ Set-Location 'E:\AI\图书管理系统\library-management'
 .\mvnw.cmd verify
 ```
 
-测试会连接真实 MySQL 8.0.44、核对数据库隔离、READ COMMITTED、UTC 会话和首个 Flyway 迁移，也会回归首页并生成可执行 JAR。命令不会清空数据库；请勿把 `.local/mysql-connection.json` 或密码提交到 Git。
+测试会连接真实 MySQL 8.0.44、核对数据库隔离、READ COMMITTED、UTC 会话和 Flyway 迁移（当前至 V7），也会运行完整回归并生成可执行 JAR。命令不会清空数据库；请勿把 `.local/mysql-connection.json` 或密码提交到 Git。
 
 ## 启动与停止
 
@@ -76,6 +77,7 @@ java -jar target\library-management-0.0.1-SNAPSHOT.jar --server.port=8081
 | `src/main/resources/application.yml` | 应用名称、本机监听地址和默认端口 |
 | `src/main/resources/application-*.yml` | 按 dev/test/prod 隔离数据源，凭据只从外部环境变量读取 |
 | `src/main/resources/db/migration/V1__create_system_guard.sql` | 建立系统锁表并插入唯一管理员集合锁行 |
+| `src/main/resources/db/migration/V7__create_loan.sql` | 建立借阅历史表和同一副本至多一条未还借阅的数据库约束 |
 | `scripts/set-local-db-env.ps1` | 从被忽略的本机 JSON 配置载入 dev 或 test 环境变量，不显示密码 |
 | `src/test/java/com/example/library/web/HomePageTest.java` | 完整应用上下文中的首页请求测试 |
 
@@ -86,6 +88,7 @@ java -jar target\library-management-0.0.1-SNAPSHOT.jar --server.port=8081
 - [项目计划与已采用调整](docs/plan.md)
 - [需求与权限规则](docs/requirements.md)
 - [开发环境与数据库约定](docs/environment.md)
+- [数据库结构与并发约定](docs/database.md)
 - [逐步验收与剩余问题](docs/progress.md)
 
 本机数据库凭据只放在被忽略的 `.local/` 目录，公开 JSON 示例不包含真实值。应用只从当前激活 profile 对应的环境变量读取连接信息：dev 固定连接 `library_dev`，test 固定连接 `library_test`，prod 固定连接由部署环境单独提供的 `library_prod`；缺少变量时启动失败。开发和测试数据库账号都没有其他库的权限。不要把 provisioning 管理连接用于应用运行。

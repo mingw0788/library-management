@@ -17,6 +17,9 @@ public interface BookCopyRepository extends JpaRepository<BookCopy, Long> {
     @Query("select c from BookCopy c where c.id = :id")
     Optional<BookCopy> findByIdForUpdate(@Param("id") Long id);
 
+    @Query("select c from BookCopy c join fetch c.book where c.id = :id")
+    Optional<BookCopy> findWithBookById(@Param("id") Long id);
+
     @Query("select c from BookCopy c join fetch c.book order by c.barcode")
     List<BookCopy> findAllWithBookOrderByBarcodeAsc();
 

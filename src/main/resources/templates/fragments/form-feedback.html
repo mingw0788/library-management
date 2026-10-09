@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<body>
+<span th:fragment="fieldError(expectedFormKey, fieldKey)"
+      th:if="${formKey == expectedFormKey and fieldErrors != null and fieldErrors[fieldKey] != null}"
+      class="field-error" role="alert" th:id="${expectedFormKey + '-' + fieldKey + '-error'}"
+      th:text="${fieldErrors[fieldKey]}"></span>
+</body>
+</html>

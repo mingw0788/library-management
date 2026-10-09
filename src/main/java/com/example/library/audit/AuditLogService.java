@@ -70,7 +70,11 @@ public class AuditLogService {
         if (actorRole != UserRole.ADMIN) throw new AccessDeniedException("仅管理员可以查看操作审计");
         int page = Math.max(1, Math.min(requestedPage, MAX_PAGE));
         Sort order = Sort.by(Sort.Order.desc("occurredAt"), Sort.Order.desc("id"));
-        return auditLogs.findAll(PageRequest.of(page - 1, PAGE_SIZE, order));
+        Page<AuditLog> result = auditLogs.findAll(PageRequest.of(page - 1, PAGE_SIZE, order));
+        if (result.getTotalPages() > 0 && page > result.getTotalPages()) {
+            return auditLogs.findAll(PageRequest.of(result.getTotalPages() - 1, PAGE_SIZE, order));
+        }
+        return result;
     }
 
     private void save(Long actorId, String loginName, String role, String action,

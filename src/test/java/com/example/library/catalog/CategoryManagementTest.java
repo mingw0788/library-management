@@ -139,6 +139,29 @@ class CategoryManagementTest {
         assertTrue(categories.findById(category.getId()).isEmpty());
     }
 
+    @Test
+    void duplicateCategoryShowsAnInlineErrorAndEscapesRetainedInput() throws Exception {
+        String maliciousName = "<script>alert(1)</script>";
+        Category existing = categoryService.create(UserRole.ADMIN, maliciousName);
+        categoryIds.add(existing.getId());
+        MockHttpSession librarianSession = login(librarian);
+
+        var failed = mvc.perform(post("/staff/categories").with(csrf()).session(librarianSession)
+                        .param("name", maliciousName))
+                .andExpect(status().is3xxRedirection()).andExpect(flash().attribute("formKey", "CATEGORY_CREATE"))
+                .andExpect(flash().attributeExists("fieldErrors")).andReturn();
+        @SuppressWarnings("unchecked")
+        var fieldErrors = (java.util.Map<String, String>) failed.getFlashMap().get("fieldErrors");
+        assertTrue(fieldErrors.get("name").contains("已存在"));
+
+        var session = (MockHttpSession) failed.getRequest().getSession(false);
+        String html = mvc.perform(get("/staff/categories").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+        assertFalse(html.contains(maliciousName));
+        assertTrue(html.contains("CATEGORY_CREATE-name-error"));
+    }
+
     private Fixture fixture(UserRole role) {
         String loginName = "cat_" + token();
         AppUser user = accounts.createUser(loginName, PASSWORD, "分类测试账号", role);

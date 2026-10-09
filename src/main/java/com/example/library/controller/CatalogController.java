@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -49,10 +51,13 @@ public class CatalogController {
             model.addAttribute("categoryId", result.categoryId());
             model.addAttribute("sort", result.sort());
             model.addAttribute("pageSize", result.books().getSize());
+            addPageWindow(model, result.books());
         } catch (IllegalArgumentException exception) {
-            model.addAttribute("booksPage", Page.empty(PageRequest.of(0, Math.max(1, Math.min(size, 100)))));
+            Page<?> empty = Page.empty(PageRequest.of(0, Math.max(1, Math.min(size, 100))));
+            model.addAttribute("booksPage", empty);
             model.addAttribute("inventory", Map.of());
             model.addAttribute("pageSize", Math.max(1, Math.min(size, 100)));
+            addPageWindow(model, empty);
             model.addAttribute("error", exception.getMessage());
         }
         return "catalog/search";
@@ -71,5 +76,16 @@ public class CatalogController {
             model.addAttribute("message", "没有找到这本有效书目。它可能不存在或已归档。");
             return "catalog/not-found";
         }
+    }
+
+    private static void addPageWindow(Model model, Page<?> page) {
+        int totalPages = page.getTotalPages();
+        int start = Math.max(0, page.getNumber() - 2);
+        int end = Math.min(totalPages - 1, page.getNumber() + 2);
+        List<Integer> pageNumbers = new ArrayList<>();
+        for (int number = start; number <= end; number++) pageNumbers.add(number);
+        model.addAttribute("pageNumbers", pageNumbers);
+        model.addAttribute("showFirstPage", start > 0);
+        model.addAttribute("showLastPage", end < totalPages - 1);
     }
 }

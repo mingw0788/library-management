@@ -5,6 +5,7 @@ import com.example.library.account.OwnAccountService;
 import com.example.library.account.UserRole;
 import com.example.library.security.CurrentIdentity;
 import com.example.library.security.CurrentIdentityService;
+import com.example.library.web.FormFeedback;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -39,19 +40,22 @@ public class OwnAccountController {
     }
 
     @PostMapping("/account/profile")
-    public String updateProfile(@RequestParam String displayName,
+    public String updateProfile(@RequestParam(required = false) String displayName,
                                 @RequestParam(required = false) String contact,
                                 HttpServletRequest request, Model model) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
         if (!containsOnlyAllowedFields(request.getParameterMap(),
                 actor.role() == UserRole.READER ? READER_FIELDS : STAFF_FIELDS)) {
-            model.addAttribute("errorMessage", "为保护账号安全，只能提交本人允许修改的资料字段。");
+            FormFeedback.failure(model, "OWN_PROFILE", "为保护账号安全，只能提交本人允许修改的资料字段。",
+                    FormFeedback.safeValues("displayName", displayName, "contact", contact));
         } else {
             try {
                 ownAccounts.updateCurrentProfile(displayName, contact);
                 return "redirect:/account/profile?updated=true";
             } catch (IllegalArgumentException exception) {
-                model.addAttribute("errorMessage", exception.getMessage());
+                FormFeedback.failure(model, "OWN_PROFILE", exception.getMessage(),
+                        FormFeedback.safeValues("displayName", displayName, "contact", contact),
+                        "displayName", "contact");
             }
         }
         OwnAccountProfile profile = ownAccounts.getCurrentProfile();

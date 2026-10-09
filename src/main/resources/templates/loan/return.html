@@ -10,14 +10,16 @@
         <p class="eyebrow">管理员与馆员</p>
         <h1 class="hero-title">办理归还</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。可输入借阅编号或馆藏条码其中一项。禁用读者的未还图书仍可由工作人员办理归还。</p>
-        <p th:if="${notice}" th:text="${notice}" role="status"></p>
-        <p th:if="${error}" th:text="${error}" role="alert"></p>
+        <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
+        <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
         <form method="post" th:action="@{/staff/loans/return}">
             <p><label for="loan-id">借阅编号</label><br>
-                <input id="loan-id" name="loanId" type="number" min="1" inputmode="numeric"></p>
+                <input id="loan-id" name="loanId" type="number" min="1" inputmode="numeric" th:value="${formKey == 'LOAN_RETURN' and formValues != null ? formValues['loanId'] : ''}" th:attr="aria-invalid=${formKey == 'LOAN_RETURN' and fieldErrors != null and fieldErrors.containsKey('loanId')},aria-describedby=${formKey == 'LOAN_RETURN' and fieldErrors != null and fieldErrors.containsKey('loanId') ? 'LOAN_RETURN-loanId-error' : null}">
+                <span th:replace="~{fragments/form-feedback :: fieldError('LOAN_RETURN', 'loanId')}"></span></p>
             <p>或</p>
             <p><label for="copy-barcode">馆藏条码</label><br>
-                <input id="copy-barcode" name="barcode" maxlength="50" autocomplete="off"></p>
+                <input id="copy-barcode" name="barcode" maxlength="50" autocomplete="off" th:value="${formKey == 'LOAN_RETURN' and formValues != null ? formValues['barcode'] : ''}" th:attr="aria-invalid=${formKey == 'LOAN_RETURN' and fieldErrors != null and fieldErrors.containsKey('barcode')},aria-describedby=${formKey == 'LOAN_RETURN' and fieldErrors != null and fieldErrors.containsKey('barcode') ? 'LOAN_RETURN-barcode-error' : null}">
+                <span th:replace="~{fragments/form-feedback :: fieldError('LOAN_RETURN', 'barcode')}"></span></p>
             <button type="submit">确认归还</button>
         </form>
         <p>提交时系统会重新核对借阅和副本状态；重复归还不会再次改变库存。</p>

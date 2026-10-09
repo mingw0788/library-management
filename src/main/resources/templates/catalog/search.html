@@ -39,12 +39,16 @@
                 <p>可借 <strong th:text="${counts.available}"></strong> 册 · 在册总数 <span th:text="${counts.total() - counts.withdrawn}"></span> 册</p>
             </div>
         </article>
-        <nav th:if="${booksPage.totalPages > 1}" aria-label="检索结果分页" class="pagination">
+        <nav th:if="${booksPage.totalPages > 1}" aria-label="检索结果分页" class="page-nav">
             <a th:if="${booksPage.hasPrevious()}" th:href="@{/catalog(q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=${booksPage.number - 1})}">上一页</a>
-            <span th:each="number : ${#numbers.sequence(0, booksPage.totalPages - 1)}">
+            <a th:if="${showFirstPage}" th:href="@{/catalog(q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=0)}">1</a>
+            <span th:if="${showFirstPage}" aria-hidden="true">…</span>
+            <span th:each="number : ${pageNumbers}">
                 <a th:if="${number != booksPage.number}" th:href="@{/catalog(q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=${number})}" th:text="${number + 1}"></a>
                 <strong th:if="${number == booksPage.number}" th:text="${number + 1}" aria-current="page"></strong>
             </span>
+            <span th:if="${showLastPage}" aria-hidden="true">…</span>
+            <a th:if="${showLastPage}" th:href="@{/catalog(q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=${booksPage.totalPages - 1})}" th:text="${booksPage.totalPages}"></a>
             <a th:if="${booksPage.hasNext()}" th:href="@{/catalog(q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=${booksPage.number + 1})}">下一页</a>
         </nav>
         <p><a th:href="@{/}">返回首页</a></p>

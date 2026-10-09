@@ -9,7 +9,8 @@
     <section class="hero">
         <p class="eyebrow">管理员与馆员</p><h1 class="hero-title">图书分类</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。名称会去除首尾空格；大小写和重音符号不区分，重复名称会被拒绝。</p>
-        <p th:if="${notice}" th:text="${notice}"></p><p th:if="${error}" th:text="${error}" role="alert"></p>
+        <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
+        <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
         <form method="get" th:action="@{/staff/categories}">
             <label for="category-query">按名称查找</label><br>
             <input id="category-query" name="q" maxlength="100" th:value="${query}">
@@ -18,7 +19,10 @@
         </form>
         <form method="post" th:action="@{/staff/categories}">
             <label for="new-category-name">新增分类名称</label><br>
-            <input id="new-category-name" name="name" required maxlength="100">
+            <input id="new-category-name" name="name" required maxlength="100"
+                   th:value="${formKey == 'CATEGORY_CREATE' and formValues != null ? formValues['name'] : ''}"
+                   th:attr="aria-invalid=${formKey == 'CATEGORY_CREATE' and fieldErrors != null and fieldErrors.containsKey('name')},aria-describedby=${formKey == 'CATEGORY_CREATE' and fieldErrors != null and fieldErrors.containsKey('name') ? 'CATEGORY_CREATE-name-error' : null}">
+            <span th:replace="~{fragments/form-feedback :: fieldError('CATEGORY_CREATE', 'name')}"></span>
             <button type="submit">新增分类</button>
         </form>
     </section>
@@ -28,7 +32,11 @@
         <div th:each="category : ${categories}" class="reader-row">
             <p>分类编号 <span th:text="${category.id}"></span></p>
             <form method="post" th:action="@{/staff/categories/{id}/rename(id=${category.id})}">
-                <label>名称</label><br><input name="name" required maxlength="100" th:value="${category.name}">
+                <label th:for="${'category-name-' + category.id}">名称</label><br>
+                <input th:id="${'category-name-' + category.id}" name="name" required maxlength="100"
+                       th:value="${formKey == 'CATEGORY_RENAME_' + category.id and formValues != null ? formValues['name'] : category.name}"
+                       th:attr="aria-invalid=${formKey == 'CATEGORY_RENAME_' + category.id and fieldErrors != null and fieldErrors.containsKey('name')},aria-describedby=${formKey == 'CATEGORY_RENAME_' + category.id and fieldErrors != null and fieldErrors.containsKey('name') ? 'CATEGORY_RENAME_' + category.id + '-name-error' : null}">
+                <span th:replace="~{fragments/form-feedback :: fieldError(${ 'CATEGORY_RENAME_' + category.id }, 'name')}"></span>
                 <button type="submit">保存修改</button>
             </form>
             <form method="post" th:action="@{/staff/categories/{id}/delete(id=${category.id})}">

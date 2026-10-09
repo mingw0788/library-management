@@ -69,9 +69,15 @@ public class LoanQueryService {
         }
         Pageable pageable = PageRequest.of(page, PAGE_SIZE,
                 Sort.by(Sort.Order.desc("borrowedAt"), Sort.Order.desc("id")));
-        return loans.search(readerProfileId, normalizedReader, normalizedBarcode, selectedState.name(),
-                        fromInclusive, untilExclusive, pageable)
-                .map(viewMapper::toListItem);
+        Page<LoanViewRow> result = loans.search(readerProfileId, normalizedReader, normalizedBarcode,
+                selectedState.name(), fromInclusive, untilExclusive, pageable);
+        if (result.getTotalPages() > 0 && page >= result.getTotalPages()) {
+            PageRequest lastPage = PageRequest.of(result.getTotalPages() - 1, PAGE_SIZE,
+                    Sort.by(Sort.Order.desc("borrowedAt"), Sort.Order.desc("id")));
+            result = loans.search(readerProfileId, normalizedReader, normalizedBarcode,
+                    selectedState.name(), fromInclusive, untilExclusive, lastPage);
+        }
+        return result.map(viewMapper::toListItem);
     }
 
     private static String optionalQuery(String value, String label, int maximumLength) {

@@ -40,11 +40,12 @@
                 </tbody>
             </table>
         </div>
-        <p th:if="${loanPage.totalPages > 1}">
-            第 <span th:text="${loanPage.number + 1}"></span> / <span th:text="${loanPage.totalPages}"></span> 页，共 <span th:text="${loanPage.totalElements}"></span> 条。
+        <nav th:if="${loanPage.totalPages > 1}" class="page-nav" aria-label="全馆借阅分页">
+            <span>共 <span th:text="${loanPage.totalElements}"></span> 条</span>
             <a th:if="${loanPage.hasPrevious()}" th:href="@{/staff/loans(page=${loanPage.number - 1},reader=${reader},barcode=${barcode},state=${state},fromDate=${fromDate},toDate=${toDate})}">上一页</a>
+            <strong aria-current="page">第 <span th:text="${loanPage.number + 1}"></span> / <span th:text="${loanPage.totalPages}"></span> 页</strong>
             <a th:if="${loanPage.hasNext()}" th:href="@{/staff/loans(page=${loanPage.number + 1},reader=${reader},barcode=${barcode},state=${state},fromDate=${fromDate},toDate=${toDate})}">下一页</a>
-        </p>
+        </nav>
         <p><a th:href="@{/staff/loans/checkout}">办理借出</a>　<a th:href="@{/staff/loans/return}">办理归还</a>　<a th:href="@{/staff}">返回工作人员工作区</a></p>
     </section>
 </main></body></html>

@@ -10,13 +10,15 @@
         <p class="eyebrow">管理员与馆员</p>
         <h1 class="hero-title">办理借出</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。请核对读者证号和实体副本条码。系统会在提交时重新检查读者资格和副本状态。</p>
-        <p th:if="${notice}" th:text="${notice}" role="status"></p>
-        <p th:if="${error}" th:text="${error}" role="alert"></p>
+        <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
+        <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
         <form method="post" th:action="@{/staff/loans/checkout}">
             <p><label for="reader-no">读者证号</label><br>
-                <input id="reader-no" name="readerNo" required maxlength="50" autocomplete="off"></p>
+                <input id="reader-no" name="readerNo" required maxlength="50" autocomplete="off" th:value="${formKey == 'LOAN_CHECKOUT' and formValues != null ? formValues['readerNo'] : ''}" th:attr="aria-invalid=${formKey == 'LOAN_CHECKOUT' and fieldErrors != null and fieldErrors.containsKey('readerNo')},aria-describedby=${formKey == 'LOAN_CHECKOUT' and fieldErrors != null and fieldErrors.containsKey('readerNo') ? 'LOAN_CHECKOUT-readerNo-error' : null}">
+                <span th:replace="~{fragments/form-feedback :: fieldError('LOAN_CHECKOUT', 'readerNo')}"></span></p>
             <p><label for="copy-barcode">馆藏条码</label><br>
-                <input id="copy-barcode" name="barcode" required maxlength="50" autocomplete="off"></p>
+                <input id="copy-barcode" name="barcode" required maxlength="50" autocomplete="off" th:value="${formKey == 'LOAN_CHECKOUT' and formValues != null ? formValues['barcode'] : ''}" th:attr="aria-invalid=${formKey == 'LOAN_CHECKOUT' and fieldErrors != null and fieldErrors.containsKey('barcode')},aria-describedby=${formKey == 'LOAN_CHECKOUT' and fieldErrors != null and fieldErrors.containsKey('barcode') ? 'LOAN_CHECKOUT-barcode-error' : null}">
+                <span th:replace="~{fragments/form-feedback :: fieldError('LOAN_CHECKOUT', 'barcode')}"></span></p>
             <button type="submit">确认借出</button>
         </form>
         <p>默认借期 14 天；读者最多同时借阅 5 册。有未还逾期记录或同一书目未归还时不能再次借阅。</p>

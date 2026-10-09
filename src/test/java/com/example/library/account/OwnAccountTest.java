@@ -149,6 +149,21 @@ class OwnAccountTest {
         long version = before.getCredentialVersion();
         String nextPassword = "brand-new-account-pass-456";
 
+        String mismatchHtml = mvc.perform(post("/account/password").with(csrf()).session(session)
+                        .param("currentPassword", PASSWORD)
+                        .param("newPassword", nextPassword).param("confirmPassword", "different-password-789"))
+                .andExpect(status().isOk()).andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("两次输入的新密码不一致")))
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(mismatchHtml.contains("PASSWORD_CHANGE-newPassword-error"));
+        assertTrue(mismatchHtml.contains("PASSWORD_CHANGE-confirmPassword-error"));
+        for (String field : List.of("currentPassword", "newPassword", "confirmPassword")) {
+            assertFalse(java.util.regex.Pattern.compile(
+                    "<input[^>]*name=\"" + field + "\"[^>]*value=").matcher(mismatchHtml).find());
+        }
+        assertFalse(mismatchHtml.contains(nextPassword));
+        assertFalse(mismatchHtml.contains("different-password-789"));
+
         mvc.perform(post("/account/password").with(csrf()).session(session)
                         .param("currentPassword", "wrong-current-pass")
                         .param("newPassword", nextPassword).param("confirmPassword", nextPassword))

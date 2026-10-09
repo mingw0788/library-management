@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>请求未完成 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero" aria-labelledby="error-title">
+        <p class="eyebrow">请求未完成</p>
+        <h1 class="hero-title" id="error-title">请检查页面地址或稍后重试</h1>
+        <p class="hero-description">页面没有显示内部错误详情。你可以返回首页重新操作。</p>
+        <p><a class="catalog-link" th:href="@{/}">返回首页</a></p>
+    </section>
+</main></body>
+</html>

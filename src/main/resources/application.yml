@@ -34,3 +34,10 @@ library:
 server:
   port: 8080
   address: 127.0.0.1
+  error:
+    include-exception: false
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    whitelabel:
+      enabled: false

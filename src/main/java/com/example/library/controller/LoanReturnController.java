@@ -4,6 +4,7 @@ import com.example.library.loan.Loan;
 import com.example.library.loan.LoanReturnService;
 import com.example.library.security.CurrentIdentity;
 import com.example.library.security.CurrentIdentityService;
+import com.example.library.web.FormFeedback;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Controller;
@@ -39,7 +40,8 @@ public class LoanReturnController {
         boolean hasLoanId = loanId != null;
         boolean hasBarcode = barcode != null && !barcode.trim().isEmpty();
         if (hasLoanId == hasBarcode) {
-            redirect.addFlashAttribute("error", "请只填写一个借阅编号或一个馆藏条码。");
+            FormFeedback.failure(redirect, "LOAN_RETURN", "请只填写一个借阅编号或一个馆藏条码。",
+                    FormFeedback.safeValues("loanId", loanId, "barcode", barcode), "loanId", "barcode");
             return "redirect:/staff/loans/return";
         }
 
@@ -50,11 +52,14 @@ public class LoanReturnController {
             redirect.addFlashAttribute("notice", "归还已办理。借阅编号：" + loan.getId()
                     + "；副本已恢复为可借状态。");
         } catch (IllegalArgumentException exception) {
-            redirect.addFlashAttribute("error", exception.getMessage());
+            FormFeedback.failure(redirect, "LOAN_RETURN", exception.getMessage(),
+                    FormFeedback.safeValues("loanId", loanId, "barcode", barcode), "loanId", "barcode");
         } catch (DataIntegrityViolationException exception) {
-            redirect.addFlashAttribute("error", "借阅资料已发生变化，请重新核对后重试。");
+            FormFeedback.failure(redirect, "LOAN_RETURN", "借阅资料已发生变化，请重新核对后重试。",
+                    FormFeedback.safeValues("loanId", loanId, "barcode", barcode), "loanId", "barcode");
         } catch (TransientDataAccessException exception) {
-            redirect.addFlashAttribute("error", "该借阅正在被其他请求处理，请刷新状态后重试。");
+            FormFeedback.failure(redirect, "LOAN_RETURN", "该借阅正在被其他请求处理，请刷新状态后重试。",
+                    FormFeedback.safeValues("loanId", loanId, "barcode", barcode), "loanId", "barcode");
         }
         return "redirect:/staff/loans/return";
     }

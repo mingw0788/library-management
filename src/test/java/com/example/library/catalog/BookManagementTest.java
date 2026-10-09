@@ -116,6 +116,41 @@ class BookManagementTest {
     }
 
     @Test
+    void emptyAndOversizedFormsShowFieldErrorsBoundRetainedValuesAndEscapeBookText() throws Exception {
+        MockHttpSession librarianSession = login(librarian);
+
+        var empty = mvc.perform(post("/staff/books").with(csrf()).session(librarianSession))
+                .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/staff/books"))
+                .andExpect(flash().attribute("formKey", "BOOK_CREATE"))
+                .andExpect(flash().attributeExists("fieldErrors")).andReturn();
+        @SuppressWarnings("unchecked")
+        var emptyErrors = (java.util.Map<String, String>) empty.getFlashMap().get("fieldErrors");
+        assertTrue(emptyErrors.get("title").contains("书名"));
+
+        String title = "超长简介表单-" + token();
+        String tooLong = "简".repeat(2_001);
+        var oversized = mvc.perform(post("/staff/books").with(csrf()).session(librarianSession)
+                        .param("title", title).param("author", "测试作者")
+                        .param("categoryId", category.getId().toString()).param("description", tooLong))
+                .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("fieldErrors"))
+                .andReturn();
+        @SuppressWarnings("unchecked")
+        var oversizedErrors = (java.util.Map<String, String>) oversized.getFlashMap().get("fieldErrors");
+        @SuppressWarnings("unchecked")
+        var retained = (java.util.Map<String, String>) oversized.getFlashMap().get("formValues");
+        assertTrue(oversizedErrors.get("description").contains("简介"));
+        assertEquals(2_000, retained.get("description").codePointCount(0, retained.get("description").length()));
+        assertFalse(books.findAll().stream().anyMatch(book -> book.getTitle().equals(title)));
+
+        String maliciousTitle = "<script>alert(1)</script>";
+        create(maliciousTitle, null);
+        String rendered = mvc.perform(get("/staff/books").param("q", maliciousTitle).session(librarianSession))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(rendered.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+        assertFalse(rendered.contains(maliciousTitle));
+    }
+
+    @Test
     void isbn10And13NormalizeAndValidateAndNullIsbnMayRepeat() {
         Book isbn10 = create("ISBN10 " + token(), "030 6406-152");
         assertEquals("0306406152", isbn10.getIsbn());

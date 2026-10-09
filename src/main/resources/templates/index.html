@@ -38,7 +38,7 @@
             <p class="eyebrow">阅读有序 · 管理有方</p>
             <h1 class="hero-title" id="welcome-title">图书管理系统</h1>
             <p class="hero-description">系统已成功启动</p>
-            <p class="hero-description">从一本书开始，让馆藏与阅读的每一次相遇都有记录。</p>
+            <p class="hero-description">从馆藏维护、读者服务到借阅归还，记录图书当前状态与每一次流转。</p>
             <p th:if="${authenticated}"><a class="catalog-link" th:href="@{/catalog}">检索馆藏图书</a></p>
         </section>
 
@@ -51,13 +51,13 @@
             <article class="info-card">
                 <p class="card-label">服务方向</p>
                 <h2 class="card-title">记录借阅流转</h2>
-                <p class="card-copy">后续将逐步提供借阅与归还服务，让图书流转更清楚。</p>
+                <p class="card-copy">工作人员可办理图书借出与归还，读者能查看本人借阅和逾期情况。</p>
             </article>
             <article class="info-card">
                 <p class="card-label">当前进度</p>
-                <h2 class="card-title">图书目录可检索</h2>
-                <p class="card-copy">书目、馆藏副本、检索和详情已开放；借阅服务将按计划逐步建设。</p>
-                <span class="card-status">目录已开放</span>
+                <h2 class="card-title">按角色使用工作区</h2>
+                <p class="card-copy">登录后可使用书目、副本、账号、借阅、个人资料和统计功能；目录供所有已登录角色检索。</p>
+                <span class="card-status">业务功能已开放</span>
             </article>
         </section>
     </main>

@@ -9,7 +9,8 @@
     <section class="hero">
         <p class="eyebrow">管理员与馆员</p><h1 class="hero-title">实体副本</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。每册实体书单独登记条码；新副本为可借状态，只能注销可借副本。</p>
-        <p th:if="${notice}" th:text="${notice}"></p><p th:if="${error}" th:text="${error}" role="alert"></p>
+        <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
+        <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
         <form method="get" th:action="@{/staff/copies}">
             <label for="copy-query">按馆藏条码或书名查找</label><br>
             <input id="copy-query" name="q" maxlength="100" th:value="${query}">
@@ -19,10 +20,10 @@
             <h2 class="card-title">登记一册新副本</h2>
             <p><label for="copy-book">书目</label><br><select id="copy-book" name="bookId" required>
                 <option value="">请选择有效书目</option>
-                <option th:each="book : ${books}" th:value="${book.id}" th:text="${book.title + '（编号 ' + book.id + '）'}"></option>
-            </select></p>
-            <p><label for="copy-barcode">唯一馆藏条码</label><br><input id="copy-barcode" name="barcode" required maxlength="50"></p>
-            <p><label for="copy-location">馆藏位置（可选）</label><br><input id="copy-location" name="shelfLocation" maxlength="100"></p>
+                <option th:each="book : ${books}" th:value="${book.id}" th:text="${book.title + '（编号 ' + book.id + '）'}" th:selected="${formKey == 'COPY_REGISTER' and formValues != null and formValues['bookId'] == book.id.toString()}"></option>
+            </select><span th:replace="~{fragments/form-feedback :: fieldError('COPY_REGISTER', 'bookId')}"></span></p>
+            <p><label for="copy-barcode">唯一馆藏条码</label><br><input id="copy-barcode" name="barcode" required maxlength="50" th:value="${formKey == 'COPY_REGISTER' and formValues != null ? formValues['barcode'] : ''}" th:attr="aria-invalid=${formKey == 'COPY_REGISTER' and fieldErrors != null and fieldErrors.containsKey('barcode')},aria-describedby=${formKey == 'COPY_REGISTER' and fieldErrors != null and fieldErrors.containsKey('barcode') ? 'COPY_REGISTER-barcode-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError('COPY_REGISTER', 'barcode')}"></span></p>
+            <p><label for="copy-location">馆藏位置（可选）</label><br><input id="copy-location" name="shelfLocation" maxlength="100" th:value="${formKey == 'COPY_REGISTER' and formValues != null ? formValues['shelfLocation'] : ''}" th:attr="aria-invalid=${formKey == 'COPY_REGISTER' and fieldErrors != null and fieldErrors.containsKey('shelfLocation')},aria-describedby=${formKey == 'COPY_REGISTER' and fieldErrors != null and fieldErrors.containsKey('shelfLocation') ? 'COPY_REGISTER-shelfLocation-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError('COPY_REGISTER', 'shelfLocation')}"></span></p>
             <button type="submit" th:disabled="${#lists.isEmpty(books)}">登记副本</button>
             <span th:if="${#lists.isEmpty(books)}">当前没有可登记副本的有效书目。</span>
         </form>

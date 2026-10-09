@@ -135,6 +135,23 @@ class CatalogSearchTest {
     }
 
     @Test
+    void catalogPageShowsACompactWindowForLargeResultSets() throws Exception {
+        String marker = "WINDOW" + token();
+        for (int index = 0; index < 9; index++) {
+            book(marker + "-" + index, "窗口测试作者", null, fiction, null);
+        }
+        MockHttpSession readerSession = login(reader);
+
+        String html = mvc.perform(get("/catalog").param("q", marker).param("size", "1")
+                        .param("page", "4").session(readerSession))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("aria-label=\"检索结果分页\"")))
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(html.contains("…"));
+        assertTrue(html.contains("aria-current=\"page\""));
+        assertFalse(html.contains("page=0&amp;"));
+    }
+
+    @Test
     void detailsShowAvailabilityAndCirculatingCopiesButHideWithdrawnAndArchivedBooks() {
         Book book = book("T11 馆藏详情 " + token(), "详情作者", null, fiction, null);
         BookCopy available = copy(book, "T11-A-" + token(), "A-01");

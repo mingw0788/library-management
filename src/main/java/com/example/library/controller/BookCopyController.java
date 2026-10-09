@@ -6,6 +6,7 @@ import com.example.library.catalog.BookCopyService;
 import com.example.library.catalog.BookService;
 import com.example.library.security.CurrentIdentity;
 import com.example.library.security.CurrentIdentityService;
+import com.example.library.web.FormFeedback;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -50,18 +51,13 @@ public class BookCopyController {
     }
 
     @PostMapping("/staff/copies")
-    public String register(@RequestParam Long bookId, @RequestParam String barcode,
+    public String register(@RequestParam(required = false) Long bookId,
+                           @RequestParam(required = false) String barcode,
                            @RequestParam(required = false) String shelfLocation, RedirectAttributes redirect) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
-        try {
-            copies.register(actor.role(), bookId, barcode, shelfLocation);
-            redirect.addFlashAttribute("notice", "副本已登记，初始状态为可借。");
-        } catch (IllegalArgumentException exception) {
-            redirect.addFlashAttribute("error", exception.getMessage());
-        } catch (DataIntegrityViolationException exception) {
-            redirect.addFlashAttribute("error", "馆藏条码已被使用，或书目已经发生变化，请核对后重试。");
-        }
-        return "redirect:/staff/copies";
+        return performForm("COPY_REGISTER", FormFeedback.safeValues(
+                "bookId", bookId, "barcode", barcode, "shelfLocation", shelfLocation), redirect,
+                () -> copies.register(actor.role(), bookId, barcode, shelfLocation), "bookId", "barcode", "shelfLocation");
     }
 
     @PostMapping("/staff/copies/{id}/withdraw")
@@ -72,6 +68,20 @@ public class BookCopyController {
             redirect.addFlashAttribute("notice", "副本已注销，历史记录仍会保留。");
         } catch (IllegalArgumentException exception) {
             redirect.addFlashAttribute("error", exception.getMessage());
+        }
+        return "redirect:/staff/copies";
+    }
+
+    private static String performForm(String formKey, java.util.Map<String, String> safeValues,
+                                      RedirectAttributes redirect, Runnable operation, String... candidateFields) {
+        try {
+            operation.run();
+            redirect.addFlashAttribute("notice", "副本已登记，初始状态为可借。");
+        } catch (IllegalArgumentException exception) {
+            FormFeedback.failure(redirect, formKey, exception.getMessage(), safeValues, candidateFields);
+        } catch (DataIntegrityViolationException exception) {
+            FormFeedback.failure(redirect, formKey,
+                    "馆藏条码已被使用，或书目已经发生变化，请核对后重试。", safeValues, candidateFields);
         }
         return "redirect:/staff/copies";
     }

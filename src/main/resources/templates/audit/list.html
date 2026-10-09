@@ -32,9 +32,9 @@
                 </tbody>
             </table>
         </div>
-        <nav aria-label="审计分页" th:if="${auditPage.totalPages > 1}">
+        <nav aria-label="审计分页" class="page-nav" th:if="${auditPage.totalPages > 1}">
             <a th:if="${auditPage.hasPrevious()}" th:href="@{/admin/audit(page=${pageNumber - 1})}">上一页</a>
-            <span th:text="'第 ' + ${pageNumber} + ' / ' + ${auditPage.totalPages} + ' 页'"></span>
+            <strong aria-current="page">第 <span th:text="${pageNumber}"></span> / <span th:text="${auditPage.totalPages}"></span> 页</strong>
             <a th:if="${auditPage.hasNext()}" th:href="@{/admin/audit(page=${pageNumber + 1})}">下一页</a>
         </nav>
     </section>

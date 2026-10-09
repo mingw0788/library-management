@@ -16,8 +16,8 @@
         <p><a th:href="@{/account/password}">修改密码</a>　<a th:href="@{/}">返回首页</a></p>
     </section>
     <section class="info-card" aria-label="本人资料表单">
-        <p class="card-copy" role="status" th:if="${updated}">资料已保存。</p>
-        <p class="card-copy" role="alert" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+        <p class="message-success" role="status" th:if="${updated}">资料已保存。</p>
+        <p class="message-error" role="alert" th:if="${errorMessage != null or error != null}" th:text="${errorMessage != null ? errorMessage : error}"></p>
         <p>登录名：<strong th:text="${profile.loginName}"></strong></p>
         <p>角色：<strong th:text="${profile.role}"></strong>　账号状态：<strong th:text="${profile.status}"></strong></p>
         <p th:if="${readerAccount}">读者证号：<strong th:text="${profile.readerNo}"></strong></p>
@@ -25,12 +25,16 @@
             <p>
                 <label for="displayName">姓名</label><br>
                 <input id="displayName" name="displayName" type="text" required maxlength="100"
-                       autocomplete="name" th:value="${profile.displayName}">
+                       autocomplete="name" th:value="${formKey == 'OWN_PROFILE' and formValues != null ? formValues['displayName'] : profile.displayName}"
+                       th:attr="aria-invalid=${formKey == 'OWN_PROFILE' and fieldErrors != null and fieldErrors.containsKey('displayName')},aria-describedby=${formKey == 'OWN_PROFILE' and fieldErrors != null and fieldErrors.containsKey('displayName') ? 'OWN_PROFILE-displayName-error' : null}">
+                <span th:replace="~{fragments/form-feedback :: fieldError('OWN_PROFILE', 'displayName')}"></span>
             </p>
             <p th:if="${readerAccount}">
                 <label for="contact">联系方式（可选）</label><br>
-                <input id="contact" name="contact" type="text" maxlength="100"
-                       autocomplete="tel" th:value="${profile.contact}">
+                    <input id="contact" name="contact" type="text" maxlength="100"
+                       autocomplete="tel" th:value="${formKey == 'OWN_PROFILE' and formValues != null ? formValues['contact'] : profile.contact}"
+                       th:attr="aria-invalid=${formKey == 'OWN_PROFILE' and fieldErrors != null and fieldErrors.containsKey('contact')},aria-describedby=${formKey == 'OWN_PROFILE' and fieldErrors != null and fieldErrors.containsKey('contact') ? 'OWN_PROFILE-contact-error' : null}">
+                    <span th:replace="~{fragments/form-feedback :: fieldError('OWN_PROFILE', 'contact')}"></span>
             </p>
             <button type="submit">保存资料</button>
         </form>

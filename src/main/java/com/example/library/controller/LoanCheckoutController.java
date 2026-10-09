@@ -4,6 +4,7 @@ import com.example.library.loan.Loan;
 import com.example.library.loan.LoanCheckoutService;
 import com.example.library.security.CurrentIdentity;
 import com.example.library.security.CurrentIdentityService;
+import com.example.library.web.FormFeedback;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Controller;
@@ -32,7 +33,8 @@ public class LoanCheckoutController {
     }
 
     @PostMapping("/staff/loans/checkout")
-    public String checkout(@RequestParam String readerNo, @RequestParam String barcode,
+    public String checkout(@RequestParam(required = false) String readerNo,
+                           @RequestParam(required = false) String barcode,
                            RedirectAttributes redirect) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
         try {
@@ -40,11 +42,16 @@ public class LoanCheckoutController {
             redirect.addFlashAttribute("notice", "借出已办理。借阅编号：" + loan.getId()
                     + "；应还日期：" + loan.getDueDate() + "。请将应还日期告知读者。");
         } catch (IllegalArgumentException exception) {
-            redirect.addFlashAttribute("error", exception.getMessage());
+            FormFeedback.failure(redirect, "LOAN_CHECKOUT", exception.getMessage(),
+                    FormFeedback.safeValues("readerNo", readerNo, "barcode", barcode), "readerNo", "barcode");
         } catch (DataIntegrityViolationException exception) {
-            redirect.addFlashAttribute("error", "借阅数据已发生变化，请重新核对读者和馆藏状态后重试。");
+            FormFeedback.failure(redirect, "LOAN_CHECKOUT",
+                    "借阅数据已发生变化，请重新核对读者和馆藏状态后重试。",
+                    FormFeedback.safeValues("readerNo", readerNo, "barcode", barcode), "readerNo", "barcode");
         } catch (TransientDataAccessException exception) {
-            redirect.addFlashAttribute("error", "借阅正在被其他请求处理，请刷新馆藏状态后重试。");
+            FormFeedback.failure(redirect, "LOAN_CHECKOUT",
+                    "借阅正在被其他请求处理，请刷新馆藏状态后重试。",
+                    FormFeedback.safeValues("readerNo", readerNo, "barcode", barcode), "readerNo", "barcode");
         }
         return "redirect:/staff/loans/checkout";
     }

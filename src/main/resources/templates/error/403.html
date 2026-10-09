@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无权访问 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero" aria-labelledby="error-title">
+        <p class="eyebrow">请求未获授权</p>
+        <h1 class="hero-title" id="error-title">你没有权限访问此页面</h1>
+        <p class="hero-description">请返回当前工作区，或使用有相应权限的账号登录。</p>
+        <p><a class="catalog-link" th:href="@{/}">返回首页</a>　<a th:href="@{/catalog}">检索馆藏</a></p>
+    </section>
+</main></body>
+</html>

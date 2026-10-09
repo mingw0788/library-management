@@ -1,6 +1,23 @@
 spring:
   application:
     name: library-management
+  profiles:
+    default: dev
+  datasource:
+    hikari:
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+      connection-init-sql: "SET time_zone = '+00:00'"
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    validate-on-migrate: true
 
 server:
   port: 8080

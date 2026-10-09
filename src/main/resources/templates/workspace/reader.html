@@ -11,8 +11,8 @@
     <section class="hero">
         <p class="eyebrow">读者工作区</p>
         <h1 class="hero-title">我的图书</h1>
-        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>；读者账号 ID：<span th:text="${readerUserId}"></span>。本人数据查询将在后续步骤实现。</p>
-        <p><a th:href="@{/catalog}">检索馆藏图书</a>　<a th:href="@{/}">返回首页</a></p>
+        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。可查看本人当前借阅和历史记录。</p>
+        <p><a th:href="@{/reader/loans}">我的借阅记录</a>　<a th:href="@{/catalog}">检索馆藏图书</a>　<a th:href="@{/}">返回首页</a></p>
     </section>
 </main>
 </body>

@@ -103,7 +103,7 @@ class AuthorizationSessionTest {
         mockMvc.perform(get("/reader").session(readerSession))
                 .andExpect(status().isOk())
                 .andExpect(view().name("workspace/reader"))
-                .andExpect(content().string(containsString(String.valueOf(reader.id()))));
+                .andExpect(content().string(containsString("我的借阅记录")));
         mockMvc.perform(get("/admin").session(readerSession)).andExpect(status().isForbidden());
         mockMvc.perform(get("/staff").session(readerSession)).andExpect(status().isForbidden());
     }

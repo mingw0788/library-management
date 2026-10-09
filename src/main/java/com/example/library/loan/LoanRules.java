@@ -35,5 +35,10 @@ public class LoanRules {
         return at.atZone(policy.zoneId()).toLocalDate().isAfter(dueDate);
     }
 
+    public boolean isReturnedLate(LocalDate dueDate, Instant returnedAt) {
+        if (dueDate == null || returnedAt == null) throw new IllegalArgumentException("应还日期和归还时刻不能为空");
+        return returnedAt.atZone(policy.zoneId()).toLocalDate().isAfter(dueDate);
+    }
+
     public CirculationPolicy policy() { return policy; }
 }

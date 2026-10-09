@@ -28,6 +28,8 @@ class LoanRulesTest {
         LocalDate dueDate = LocalDate.of(2026, 10, 9);
         assertFalse(rules.isOverdue(dueDate, Instant.parse("2026-10-09T15:59:59Z")));
         assertTrue(rules.isOverdue(dueDate, Instant.parse("2026-10-09T16:00:00Z")));
+        assertFalse(rules.isReturnedLate(dueDate, Instant.parse("2026-10-09T15:59:59Z")));
+        assertTrue(rules.isReturnedLate(dueDate, Instant.parse("2026-10-09T16:00:00Z")));
         assertThrows(IllegalArgumentException.class, () -> rules.dueDateFor(null));
     }
 

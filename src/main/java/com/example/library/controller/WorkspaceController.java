@@ -31,10 +31,9 @@ public class WorkspaceController {
 
     @GetMapping("/reader")
     public String readerWorkspace(Model model) {
-        Long readerUserId = currentIdentity.requireReaderUserId();
+        currentIdentity.requireReaderUserId();
         CurrentIdentity identity = currentIdentity.requireCurrentIdentity();
         model.addAttribute("loginName", identity.loginName());
-        model.addAttribute("readerUserId", readerUserId);
         return "workspace/reader";
     }
 }

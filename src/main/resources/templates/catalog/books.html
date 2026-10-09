@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>书目管理 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">管理员与馆员</p><h1 class="hero-title">书目资料</h1>
+        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。ISBN 会去除空格和连字符并验证校验位；留空表示没有 ISBN。归档会保留书目历史。</p>
+        <p th:if="${notice}" th:text="${notice}"></p><p th:if="${error}" th:text="${error}" role="alert"></p>
+        <form method="get" th:action="@{/staff/books}">
+            <label for="book-query">按书名、作者或 ISBN 查找</label><br>
+            <input id="book-query" name="q" maxlength="100" th:value="${query}">
+            <button type="submit">查询</button><a th:href="@{/staff/books}">显示全部</a>
+        </form>
+        <form method="post" th:action="@{/staff/books}">
+            <h2 class="card-title">新增书目</h2>
+            <p><label>书名</label><br><input name="title" required maxlength="200"></p>
+            <p><label>作者</label><br><input name="author" required maxlength="200"></p>
+            <p><label>出版社（可选）</label><br><input name="publisher" maxlength="200"></p>
+            <p><label>出版日期（可选）</label><br><input name="publishedDate" type="date"></p>
+            <p><label>ISBN（可选）</label><br><input name="isbn" maxlength="25" autocomplete="off"></p>
+            <p><label>分类</label><br><select name="categoryId" required>
+                <option value="">请选择分类</option>
+                <option th:each="category : ${categories}" th:value="${category.id}" th:text="${category.name}"></option>
+            </select></p>
+            <p><label>简介（可选，最多 2000 字）</label><br><textarea name="description" maxlength="2000" rows="5"></textarea></p>
+            <button type="submit" th:disabled="${#lists.isEmpty(categories)}">新增书目</button>
+            <span th:if="${#lists.isEmpty(categories)}">请先创建分类。</span>
+        </form>
+    </section>
+    <section class="info-card">
+        <h2 class="card-title">书目列表</h2>
+        <p th:if="${#lists.isEmpty(books)}">没有匹配的书目。</p>
+        <article th:each="book : ${books}" class="reader-row">
+            <p>书目编号 <span th:text="${book.id}"></span> · <strong th:text="${book.title}"></strong> · <span th:text="${book.status}"></span></p>
+            <p th:if="${book.status.name() == 'ACTIVE'}">编辑书目资料时请使用当前版本；如果他人先提交了修改，旧版本会被拒绝。</p>
+            <form method="post" th:if="${book.status.name() == 'ACTIVE'}" th:action="@{/staff/books/{id}/update(id=${book.id})}">
+                <input type="hidden" name="version" th:value="${book.version}">
+                <p><label>书名</label><br><input name="title" required maxlength="200" th:value="${book.title}"></p>
+                <p><label>作者</label><br><input name="author" required maxlength="200" th:value="${book.author}"></p>
+                <p><label>出版社</label><br><input name="publisher" maxlength="200" th:value="${book.publisher}"></p>
+                <p><label>出版日期</label><br><input name="publishedDate" type="date" th:value="${book.publishedDate}"></p>
+                <p><label>ISBN</label><br><input name="isbn" maxlength="25" th:value="${book.isbn}"></p>
+                <p><label>分类</label><br><select name="categoryId" required>
+                    <option th:each="category : ${categories}" th:value="${category.id}" th:text="${category.name}" th:selected="${category.id == book.categoryId}"></option>
+                </select></p>
+                <p><label>简介</label><br><textarea name="description" maxlength="2000" rows="5" th:text="${book.description}"></textarea></p>
+                <button type="submit">保存修改</button>
+            </form>
+            <p><span>作者：</span><span th:text="${book.author}"></span> · <span>出版社：</span><span th:text="${book.publisher}"></span></p>
+            <p><span>出版日期：</span><span th:text="${book.publishedDate}"></span> · ISBN <span th:text="${book.isbn}"></span></p>
+            <p><span>简介：</span><span th:text="${book.description}"></span></p>
+            <form method="post" th:if="${book.status.name() == 'ACTIVE'}" th:action="@{/staff/books/{id}/archive(id=${book.id})}">
+                <button type="submit">归档书目</button>
+            </form>
+            <p th:if="${book.status.name() == 'ARCHIVED'}">该书目已归档，资料保留供工作人员查阅。</p>
+        </article>
+        <p><a th:href="@{/staff}">返回工作人员工作区</a></p>
+    </section>
+</main></body></html>

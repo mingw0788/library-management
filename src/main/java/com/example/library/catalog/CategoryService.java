@@ -1,5 +1,6 @@
 package com.example.library.catalog;
 
+import com.example.library.audit.AuditLogService;
 import com.example.library.account.UserRole;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -11,8 +12,12 @@ import java.util.List;
 public class CategoryService {
 
     private final CategoryRepository categories;
+    private final AuditLogService auditLogs;
 
-    public CategoryService(CategoryRepository categories) { this.categories = categories; }
+    public CategoryService(CategoryRepository categories, AuditLogService auditLogs) {
+        this.categories = categories;
+        this.auditLogs = auditLogs;
+    }
 
     @Transactional(readOnly = true)
     public List<Category> search(UserRole actorRole, String query) {
@@ -32,7 +37,9 @@ public class CategoryService {
         if (categories.findByName(normalized).isPresent()) {
             throw new IllegalArgumentException("分类名称已存在");
         }
-        return categories.saveAndFlush(new Category(normalized));
+        Category category = categories.saveAndFlush(new Category(normalized));
+        auditLogs.recordCurrent(actorRole, "CATEGORY_CREATED", "CATEGORY", category.getId(), "新增分类");
+        return category;
     }
 
     @Transactional
@@ -43,7 +50,9 @@ public class CategoryService {
         categories.findByName(normalized).filter(existing -> !existing.getId().equals(id))
                 .ifPresent(existing -> { throw new IllegalArgumentException("分类名称已存在"); });
         category.rename(normalized);
-        return categories.saveAndFlush(category);
+        Category saved = categories.saveAndFlush(category);
+        auditLogs.recordCurrent(actorRole, "CATEGORY_RENAMED", "CATEGORY", saved.getId(), "修改分类名称");
+        return saved;
     }
 
     @Transactional
@@ -51,6 +60,7 @@ public class CategoryService {
         requireStaff(actorRole);
         categories.delete(requireCategory(id));
         categories.flush();
+        auditLogs.recordCurrent(actorRole, "CATEGORY_DELETED", "CATEGORY", id, "删除分类");
     }
 
     private Category requireCategory(Long id) {

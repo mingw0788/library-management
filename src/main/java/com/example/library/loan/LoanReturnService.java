@@ -1,5 +1,6 @@
 package com.example.library.loan;
 
+import com.example.library.audit.AuditLogService;
 import com.example.library.account.AppUser;
 import com.example.library.account.AppUserRepository;
 import com.example.library.account.ReaderProfile;
@@ -32,15 +33,18 @@ public class LoanReturnService {
     private final BookCopyRepository copies;
     private final LoanRepository loans;
     private final Clock circulationClock;
+    private final AuditLogService auditLogs;
 
     public LoanReturnService(AppUserRepository users, ReaderProfileRepository readers, BookRepository books,
-                             BookCopyRepository copies, LoanRepository loans, Clock circulationClock) {
+                             BookCopyRepository copies, LoanRepository loans, Clock circulationClock,
+                             AuditLogService auditLogs) {
         this.users = users;
         this.readers = readers;
         this.books = books;
         this.copies = copies;
         this.loans = loans;
         this.circulationClock = circulationClock;
+        this.auditLogs = auditLogs;
     }
 
     @Transactional
@@ -107,6 +111,7 @@ public class LoanReturnService {
         copy.returnFromLoan();
         loans.saveAndFlush(loan);
         copies.saveAndFlush(copy);
+        auditLogs.recordCurrent(operatorId, actorRole, "LOAN_RETURNED", "LOAN", loan.getId(), "办理归还");
         return loan;
     }
 

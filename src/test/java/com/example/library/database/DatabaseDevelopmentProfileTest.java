@@ -23,10 +23,13 @@ class DatabaseDevelopmentProfileTest {
         assertEquals("+00:00", jdbcTemplate.queryForObject("SELECT @@session.time_zone", String.class));
         assertEquals(1, jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM system_guard WHERE guard_key = 'ACTIVE_ADMIN_SET'", Integer.class));
-        assertEquals("7", jdbcTemplate.queryForObject(
+        assertEquals("8", jdbcTemplate.queryForObject(
                 "SELECT MAX(version) FROM flyway_schema_history WHERE success = 1", String.class));
         assertEquals(1, jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() " +
                         "AND table_name = 'loan'", Integer.class));
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() " +
+                        "AND table_name = 'audit_log'", Integer.class));
     }
 }

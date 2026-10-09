@@ -1,5 +1,6 @@
 package com.example.library.account;
 
+import com.example.library.audit.AuditLogService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
@@ -15,13 +16,16 @@ public class AccountService {
     private final PasswordEncoder passwordEncoder;
     private final ReaderProfileRepository readerProfiles;
     private final JdbcTemplate jdbcTemplate;
+    private final AuditLogService auditLogs;
 
     public AccountService(AppUserRepository users, PasswordEncoder passwordEncoder,
-                          ReaderProfileRepository readerProfiles, JdbcTemplate jdbcTemplate) {
+                          ReaderProfileRepository readerProfiles, JdbcTemplate jdbcTemplate,
+                          AuditLogService auditLogs) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.readerProfiles = readerProfiles;
         this.jdbcTemplate = jdbcTemplate;
+        this.auditLogs = auditLogs;
     }
 
     @Transactional
@@ -29,7 +33,9 @@ public class AccountService {
         if (role == UserRole.ADMIN) {
             lockActiveAdminSet();
         }
-        return saveUser(loginName, rawPassword, displayName, role);
+        AppUser user = saveUser(loginName, rawPassword, displayName, role);
+        auditLogs.recordCurrent(null, "ACCOUNT_CREATED", "USER", user.getId(), "创建账号");
+        return user;
     }
 
     private AppUser saveUser(String loginName, String rawPassword, String displayName, UserRole role) {
@@ -53,7 +59,9 @@ public class AccountService {
         if (newRole == UserRole.ADMIN) {
             lockActiveAdminSet();
         }
-        return saveUser(loginName, initialPassword, displayName, newRole);
+        AppUser user = saveUser(loginName, initialPassword, displayName, newRole);
+        auditLogs.recordCurrent(actorRole, "STAFF_CREATED", "USER", user.getId(), "创建工作人员账号");
+        return user;
     }
 
     @Transactional
@@ -67,6 +75,7 @@ public class AccountService {
         }
         AppUser user = saveUser(loginName, initialPassword, displayName, UserRole.READER);
         readerProfiles.saveAndFlush(new ReaderProfile(user.getId(), normalizedReaderNo, normalizedContact));
+        auditLogs.recordCurrent(actorRole, "READER_CREATED", "USER", user.getId(), "创建读者账号");
         return user;
     }
 
@@ -84,6 +93,7 @@ public class AccountService {
             }
         }
         user.changeStatus(UserStatus.DISABLED);
+        auditLogs.recordCurrent(actorRole, "STAFF_DISABLED", "USER", user.getId(), "停用工作人员账号");
     }
 
     @Transactional
@@ -92,6 +102,7 @@ public class AccountService {
         AppUser user = requireStaff(userId);
         PasswordPolicy.validate(newPassword);
         user.replacePasswordHash(passwordEncoder.encode(newPassword));
+        auditLogs.recordCurrent(actorRole, "STAFF_PASSWORD_RESET", "USER", user.getId(), "重置工作人员密码");
     }
 
     @Transactional(readOnly = true)
@@ -115,6 +126,7 @@ public class AccountService {
         user.changeDisplayName(normalizeDisplayName(displayName));
         readerProfiles.findByUserId(userId).orElseThrow(() -> new IllegalArgumentException("读者档案不存在"))
                 .changeContact(normalizeContact(contact));
+        auditLogs.recordCurrent(actorRole, "READER_UPDATED", "USER", userId, "更新读者资料");
     }
 
     @Transactional
@@ -127,13 +139,16 @@ public class AccountService {
             throw new IllegalArgumentException("目标账号不是有效读者");
         }
         reader.changeStatus(UserStatus.DISABLED);
+        auditLogs.recordCurrent(actorRole, "READER_DISABLED", "USER", reader.getId(), "停用读者账号");
     }
 
     @Transactional
     public void resetReaderPassword(UserRole actorRole, Long userId, String newPassword) {
         requireReaderManager(actorRole);
         PasswordPolicy.validate(newPassword);
-        requireReader(userId).replacePasswordHash(passwordEncoder.encode(newPassword));
+        AppUser reader = requireReader(userId);
+        reader.replacePasswordHash(passwordEncoder.encode(newPassword));
+        auditLogs.recordCurrent(actorRole, "READER_PASSWORD_RESET", "USER", reader.getId(), "重置读者密码");
     }
 
     @Transactional
@@ -142,7 +157,8 @@ public class AccountService {
         if (users.existsByRole(UserRole.ADMIN)) {
             return false;
         }
-        saveUser(loginName, password, displayName, UserRole.ADMIN);
+        AppUser admin = saveUser(loginName, password, displayName, UserRole.ADMIN);
+        auditLogs.recordSystem("INITIAL_ADMIN_CREATED", "USER", admin.getId(), "初始化首位管理员");
         return true;
     }
 
@@ -160,6 +176,8 @@ public class AccountService {
         }
         PasswordPolicy.validate(newPassword);
         user.completePasswordChange(passwordEncoder.encode(newPassword));
+        auditLogs.recordCurrent(user.getId(), user.getRole(), "OWN_PASSWORD_CHANGED", "USER", user.getId(),
+                "本人修改密码");
     }
 
     private static String normalizeDisplayName(String value) {

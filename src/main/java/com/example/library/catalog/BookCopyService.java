@@ -1,5 +1,6 @@
 package com.example.library.catalog;
 
+import com.example.library.audit.AuditLogService;
 import com.example.library.account.UserRole;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -15,10 +16,12 @@ public class BookCopyService {
 
     private final BookRepository books;
     private final BookCopyRepository copies;
+    private final AuditLogService auditLogs;
 
-    public BookCopyService(BookRepository books, BookCopyRepository copies) {
+    public BookCopyService(BookRepository books, BookCopyRepository copies, AuditLogService auditLogs) {
         this.books = books;
         this.copies = copies;
+        this.auditLogs = auditLogs;
     }
 
     @Transactional(readOnly = true)
@@ -45,7 +48,9 @@ public class BookCopyService {
         if (copies.findByBarcode(normalizedBarcode).isPresent()) {
             throw new IllegalArgumentException("馆藏条码已被使用");
         }
-        return copies.saveAndFlush(new BookCopy(book, normalizedBarcode, normalizedLocation));
+        BookCopy copy = copies.saveAndFlush(new BookCopy(book, normalizedBarcode, normalizedLocation));
+        auditLogs.recordCurrent(actorRole, "COPY_REGISTERED", "BOOK_COPY", copy.getId(), "登记实体副本");
+        return copy;
     }
 
     @Transactional
@@ -55,6 +60,7 @@ public class BookCopyService {
         BookCopy copy = copies.findByIdForUpdate(id).orElseThrow(() -> new IllegalArgumentException("副本不存在"));
         copy.withdraw();
         copies.saveAndFlush(copy);
+        auditLogs.recordCurrent(actorRole, "COPY_WITHDRAWN", "BOOK_COPY", copy.getId(), "注销实体副本");
     }
 
     @Transactional(readOnly = true)

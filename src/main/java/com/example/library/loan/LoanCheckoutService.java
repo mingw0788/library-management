@@ -1,5 +1,6 @@
 package com.example.library.loan;
 
+import com.example.library.audit.AuditLogService;
 import com.example.library.account.AppUser;
 import com.example.library.account.AppUserRepository;
 import com.example.library.account.ReaderProfile;
@@ -35,10 +36,12 @@ public class LoanCheckoutService {
     private final LoanEligibilityPolicy eligibility;
     private final LoanRules rules;
     private final Clock circulationClock;
+    private final AuditLogService auditLogs;
 
     public LoanCheckoutService(AppUserRepository users, ReaderProfileRepository readers, BookRepository books,
                                BookCopyRepository copies, LoanRepository loans,
-                               LoanEligibilityPolicy eligibility, LoanRules rules, Clock circulationClock) {
+                               LoanEligibilityPolicy eligibility, LoanRules rules, Clock circulationClock,
+                               AuditLogService auditLogs) {
         this.users = users;
         this.readers = readers;
         this.books = books;
@@ -47,6 +50,7 @@ public class LoanCheckoutService {
         this.eligibility = eligibility;
         this.rules = rules;
         this.circulationClock = circulationClock;
+        this.auditLogs = auditLogs;
     }
 
     @Transactional
@@ -98,6 +102,7 @@ public class LoanCheckoutService {
         Loan loan = loans.saveAndFlush(new Loan(reader, copy, borrowedAt, rules.dueDateFor(borrowedAt), operator));
         copy.checkout();
         copies.saveAndFlush(copy);
+        auditLogs.recordCurrent(operatorId, actorRole, "LOAN_CHECKED_OUT", "LOAN", loan.getId(), "办理借出");
         return loan;
     }
 

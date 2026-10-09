@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关键操作审计 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body>
+<main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">管理员工作区</p>
+        <h1 class="hero-title">关键操作审计</h1>
+        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。这里只记录操作人、目标和结果摘要，不保存密码、联系方式或请求内容。</p>
+        <p><a th:href="@{/admin}">返回管理员工作区</a></p>
+    </section>
+    <section class="content-card">
+        <p th:if="${auditPage.empty}">暂无操作记录。</p>
+        <div class="table-wrap" th:unless="${auditPage.empty}">
+            <table>
+                <thead><tr><th>时间（UTC）</th><th>操作者</th><th>角色</th><th>操作</th><th>目标</th><th>结果</th><th>摘要</th></tr></thead>
+                <tbody>
+                <tr th:each="entry : ${auditPage.content}">
+                    <td th:text="${entry.occurredAt}"></td>
+                    <td th:text="${entry.actorLoginSnapshot}"></td>
+                    <td th:text="${entry.actorRoleSnapshot}"></td>
+                    <td th:text="${entry.action}"></td>
+                    <td th:text="${entry.targetId == null ? entry.targetType : entry.targetType + ' #' + entry.targetId}"></td>
+                    <td th:text="${entry.result}"></td>
+                    <td th:text="${entry.summary}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <nav aria-label="审计分页" th:if="${auditPage.totalPages > 1}">
+            <a th:if="${auditPage.hasPrevious()}" th:href="@{/admin/audit(page=${pageNumber - 1})}">上一页</a>
+            <span th:text="'第 ' + ${pageNumber} + ' / ' + ${auditPage.totalPages} + ' 页'"></span>
+            <a th:if="${auditPage.hasNext()}" th:href="@{/admin/audit(page=${pageNumber + 1})}">下一页</a>
+        </nav>
+    </section>
+</main>
+</body>
+</html>

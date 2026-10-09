@@ -1,5 +1,6 @@
 package com.example.library.catalog;
 
+import com.example.library.audit.AuditLogService;
 import com.example.library.account.UserRole;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
@@ -15,11 +16,14 @@ public class BookService {
     private final BookRepository books;
     private final CategoryRepository categories;
     private final BookArchiveGuard archiveGuard;
+    private final AuditLogService auditLogs;
 
-    public BookService(BookRepository books, CategoryRepository categories, BookArchiveGuard archiveGuard) {
+    public BookService(BookRepository books, CategoryRepository categories, BookArchiveGuard archiveGuard,
+                       AuditLogService auditLogs) {
         this.books = books;
         this.categories = categories;
         this.archiveGuard = archiveGuard;
+        this.auditLogs = auditLogs;
     }
 
     @Transactional(readOnly = true)
@@ -44,8 +48,10 @@ public class BookService {
                        LocalDate publishedDate, String isbn, Long categoryId, String description) {
         requireStaff(actorRole);
         BookDetails details = validateDetails(title, author, publisher, publishedDate, isbn, categoryId, description, null);
-        return books.saveAndFlush(new Book(details.categoryId(), details.title(), details.author(), details.publisher(),
+        Book book = books.saveAndFlush(new Book(details.categoryId(), details.title(), details.author(), details.publisher(),
                 details.publishedDate(), details.isbn(), details.description()));
+        auditLogs.recordCurrent(actorRole, "BOOK_CREATED", "BOOK", book.getId(), "新增书目");
+        return book;
     }
 
     @Transactional
@@ -60,7 +66,9 @@ public class BookService {
         BookDetails details = validateDetails(title, author, publisher, publishedDate, isbn, categoryId, description, id);
         book.update(details.categoryId(), details.title(), details.author(), details.publisher(),
                 details.publishedDate(), details.isbn(), details.description());
-        return books.saveAndFlush(book);
+        Book saved = books.saveAndFlush(book);
+        auditLogs.recordCurrent(actorRole, "BOOK_UPDATED", "BOOK", saved.getId(), "修改书目资料");
+        return saved;
     }
 
     @Transactional
@@ -71,6 +79,7 @@ public class BookService {
         archiveGuard.assertCanArchive(id);
         book.archive();
         books.saveAndFlush(book);
+        auditLogs.recordCurrent(actorRole, "BOOK_ARCHIVED", "BOOK", book.getId(), "归档书目");
     }
 
     private BookDetails validateDetails(String title, String author, String publisher, LocalDate publishedDate,

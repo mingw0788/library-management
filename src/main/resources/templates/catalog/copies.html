@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实体副本 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">管理员与馆员</p><h1 class="hero-title">实体副本</h1>
+        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。每册实体书单独登记条码；新副本为可借状态，只能注销可借副本。</p>
+        <p th:if="${notice}" th:text="${notice}"></p><p th:if="${error}" th:text="${error}" role="alert"></p>
+        <form method="get" th:action="@{/staff/copies}">
+            <label for="copy-query">按馆藏条码或书名查找</label><br>
+            <input id="copy-query" name="q" maxlength="100" th:value="${query}">
+            <button type="submit">查询</button><a th:href="@{/staff/copies}">显示全部</a>
+        </form>
+        <form method="post" th:action="@{/staff/copies}">
+            <h2 class="card-title">登记一册新副本</h2>
+            <p><label for="copy-book">书目</label><br><select id="copy-book" name="bookId" required>
+                <option value="">请选择有效书目</option>
+                <option th:each="book : ${books}" th:value="${book.id}" th:text="${book.title + '（编号 ' + book.id + '）'}"></option>
+            </select></p>
+            <p><label for="copy-barcode">唯一馆藏条码</label><br><input id="copy-barcode" name="barcode" required maxlength="50"></p>
+            <p><label for="copy-location">馆藏位置（可选）</label><br><input id="copy-location" name="shelfLocation" maxlength="100"></p>
+            <button type="submit" th:disabled="${#lists.isEmpty(books)}">登记副本</button>
+            <span th:if="${#lists.isEmpty(books)}">当前没有可登记副本的有效书目。</span>
+        </form>
+    </section>
+    <section class="info-card">
+        <h2 class="card-title">副本清单</h2>
+        <p th:if="${#lists.isEmpty(copies)}">没有匹配的副本。</p>
+        <article th:each="copy : ${copies}" class="reader-row">
+            <p><strong th:text="${copy.book.title}"></strong> · 条码 <span th:text="${copy.barcode}"></span> · 状态 <span th:text="${copy.status}"></span></p>
+            <p>位置：<span th:text="${copy.shelfLocation == null ? '未填写' : copy.shelfLocation}"></span></p>
+            <div th:with="inventory=${copyInventory[copy.bookId]}">
+                <p>该书目数量：可借 <span th:text="${inventory.available}"></span> · 借出 <span th:text="${inventory.onLoan}"></span> · 已注销 <span th:text="${inventory.withdrawn}"></span> · 合计 <span th:text="${inventory.total()}"></span></p>
+            </div>
+            <form method="post" th:if="${copy.status.name() == 'AVAILABLE'}" th:action="@{/staff/copies/{id}/withdraw(id=${copy.id})}">
+                <button type="submit">注销此副本</button>
+            </form>
+            <p th:if="${copy.status.name() == 'WITHDRAWN'}">副本已注销，不会计入可借数量。</p>
+        </article>
+        <p><a th:href="@{/staff/books}">返回书目管理</a>　<a th:href="@{/staff}">返回工作人员工作区</a></p>
+    </section>
+</main></body></html>

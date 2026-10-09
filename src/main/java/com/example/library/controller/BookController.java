@@ -3,6 +3,7 @@ package com.example.library.controller;
 import com.example.library.account.UserRole;
 import com.example.library.catalog.Book;
 import com.example.library.catalog.BookService;
+import com.example.library.catalog.BookCopyService;
 import com.example.library.catalog.Category;
 import com.example.library.catalog.CategoryService;
 import com.example.library.security.CurrentIdentity;
@@ -24,11 +25,14 @@ import java.util.List;
 public class BookController {
 
     private final BookService books;
+    private final BookCopyService copies;
     private final CategoryService categories;
     private final CurrentIdentityService currentIdentity;
 
-    public BookController(BookService books, CategoryService categories, CurrentIdentityService currentIdentity) {
+    public BookController(BookService books, BookCopyService copies, CategoryService categories,
+                          CurrentIdentityService currentIdentity) {
         this.books = books;
+        this.copies = copies;
         this.categories = categories;
         this.currentIdentity = currentIdentity;
     }
@@ -40,9 +44,13 @@ public class BookController {
         model.addAttribute("query", q == null ? "" : q.trim());
         model.addAttribute("categories", categories.search(actor.role(), null));
         try {
-            model.addAttribute("books", books.search(actor.role(), q));
+            List<Book> results = books.search(actor.role(), q);
+            model.addAttribute("books", results);
+            model.addAttribute("copyInventory", copies.inventoryByBookIds(
+                    results.stream().map(Book::getId).toList()));
         } catch (IllegalArgumentException exception) {
             model.addAttribute("books", List.of());
+            model.addAttribute("copyInventory", java.util.Map.of());
             model.addAttribute("error", exception.getMessage());
         }
         return "catalog/books";

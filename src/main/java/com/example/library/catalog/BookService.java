@@ -66,7 +66,8 @@ public class BookService {
     @Transactional
     public void archive(UserRole actorRole, Long id) {
         requireStaff(actorRole);
-        Book book = requireBook(id);
+        if (id == null) throw new IllegalArgumentException("书目编号不能为空");
+        Book book = books.findByIdForUpdate(id).orElseThrow(() -> new IllegalArgumentException("书目不存在"));
         archiveGuard.assertCanArchive(id);
         book.archive();
         books.saveAndFlush(book);

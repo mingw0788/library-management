@@ -3,6 +3,7 @@ package com.example.library.web;
 import com.example.library.account.AccountService;
 import com.example.library.account.AppUser;
 import com.example.library.account.AppUserRepository;
+import com.example.library.account.ReaderProfileRepository;
 import com.example.library.account.UserRole;
 import com.example.library.account.UserStatus;
 import com.example.library.security.AppUserPrincipal;
@@ -55,6 +56,9 @@ class AuthorizationSessionTest {
     private AppUserRepository users;
 
     @Autowired
+    private ReaderProfileRepository readerProfiles;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -69,14 +73,16 @@ class AuthorizationSessionTest {
     void createRoleFixtures() {
         admin = createUser(UserRole.ADMIN);
         librarian = createUser(UserRole.LIBRARIAN);
-        reader = createUser(UserRole.READER);
+        reader = createReader();
     }
 
     @AfterEach
     void removeRoleFixtures() {
         for (Long id : createdUserIds) {
+            readerProfiles.findByUserId(id).ifPresent(readerProfiles::delete);
             users.deleteById(id);
         }
+        readerProfiles.flush();
         createdUserIds.clear();
         SecurityContextHolder.clearContext();
     }
@@ -185,6 +191,17 @@ class AuthorizationSessionTest {
         AppUser saved = users.saveAndFlush(user);
         createdUserIds.add(saved.getId());
         return new TestUser(saved.getId(), loginName, role);
+    }
+
+    private TestUser createReader() {
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        String loginName = "access_reader_" + suffix;
+        AppUser user = accounts.createReader(UserRole.ADMIN, loginName, PASSWORD,
+                "权限测试读者", "ACCESS-" + suffix, null);
+        user.markPasswordChanged();
+        AppUser saved = users.saveAndFlush(user);
+        createdUserIds.add(saved.getId());
+        return new TestUser(saved.getId(), loginName, UserRole.READER);
     }
 
     private MockHttpSession login(TestUser user) throws Exception {

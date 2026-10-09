@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<body>
+<section th:fragment="staffStatistics(stats)" aria-labelledby="staff-statistics-title">
+    <h2 id="staff-statistics-title">全馆概况</h2>
+    <p class="card-copy">书目总数包含已归档书目；副本总数包含已注销副本，有效副本不含已注销副本。逾期按上海日期计算，应还当天不算逾期。</p>
+    <div class="overview-grid dashboard-grid">
+        <article class="info-card dashboard-card">
+            <h3 class="card-label">书目总数</h3>
+            <p class="dashboard-value" th:text="${stats.bookTitles}">0</p>
+        </article>
+        <article class="info-card dashboard-card">
+            <h3 class="card-label">副本总数</h3>
+            <p class="dashboard-value" th:text="${stats.copiesTotal}">0</p>
+        </article>
+        <article class="info-card dashboard-card">
+            <h3 class="card-label">有效副本</h3>
+            <p class="dashboard-value" th:text="${stats.copiesValid}">0</p>
+        </article>
+        <article class="info-card dashboard-card">
+            <h3 class="card-label">可借副本</h3>
+            <p class="dashboard-value" th:text="${stats.copiesAvailable}">0</p>
+        </article>
+        <article class="info-card dashboard-card">
+            <h3 class="card-label">当前借阅</h3>
+            <p class="dashboard-value" th:text="${stats.currentLoans}">0</p>
+        </article>
+        <article class="info-card dashboard-card">
+            <h3 class="card-label">当前逾期未还</h3>
+            <p class="dashboard-value" th:text="${stats.currentOverdueLoans}">0</p>
+        </article>
+    </div>
+</section>
+
+<section th:fragment="readerStatistics(stats)" aria-labelledby="reader-statistics-title">
+    <h2 id="reader-statistics-title">我的借阅概况</h2>
+    <p class="card-copy">仅统计当前账号的未还借阅；逾期按上海日期计算，应还当天不算逾期。</p>
+    <div class="overview-grid dashboard-grid reader-dashboard-grid">
+        <article class="info-card dashboard-card">
+            <h3 class="card-label">我的未还借阅</h3>
+            <p class="dashboard-value" th:text="${stats.currentLoans}">0</p>
+        </article>
+        <article class="info-card dashboard-card">
+            <h3 class="card-label">我的当前逾期</h3>
+            <p class="dashboard-value" th:text="${stats.currentOverdueLoans}">0</p>
+        </article>
+    </div>
+    <p><a th:href="@{/reader/loans}">查看我的借阅记录</a></p>
+</section>
+</body>
+</html>

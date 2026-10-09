@@ -27,6 +27,9 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
     Optional<LoanReference> findActiveReferenceByBarcode(@Param("barcode") String barcode);
 
     long countByReader_IdAndReturnedAtIsNull(Long readerId);
+    long countByReader_IdAndReturnedAtIsNullAndDueDateBefore(Long readerId, LocalDate date);
+    long countByReturnedAtIsNull();
+    long countByReturnedAtIsNullAndDueDateBefore(LocalDate date);
 
     Optional<Loan> findByReader_IdAndReturnedAtIsNull(Long readerId);
 

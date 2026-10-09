@@ -34,6 +34,8 @@ public interface BookCopyRepository extends JpaRepository<BookCopy, Long> {
 
     long countByBook_IdAndStatusNot(Long bookId, BookCopyStatus status);
     long countByBook_IdAndStatus(Long bookId, BookCopyStatus status);
+    long countByStatusNot(BookCopyStatus status);
+    long countByStatus(BookCopyStatus status);
 
     @Query("select new com.example.library.catalog.CatalogCopyView(c.shelfLocation, c.status) " +
             "from BookCopy c where c.book.id = :bookId and c.status <> :withdrawn " +

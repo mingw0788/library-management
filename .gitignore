@@ -1,0 +1,22 @@
+# Local credentials and machine-specific configuration
+.local/
+.env
+.env.*
+!.env.example
+application-*.local.yml
+application-*.local.yaml
+config/application-prod.yml
+
+# Build outputs, logs, backups and local delivery packages
+target/
+*.log
+logs/
+backups/
+delivery/
+*.sql.gz
+*.dump
+
+# Local editor state
+.idea/
+*.iml
+.vscode/

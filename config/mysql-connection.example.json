@@ -1,0 +1,19 @@
+{
+  "host": "127.0.0.1",
+  "port": 3306,
+  "expectedServerVersion": "8.0.44",
+  "provisioning": {
+    "username": "",
+    "password": ""
+  },
+  "development": {
+    "database": "library_dev",
+    "username": "",
+    "password": ""
+  },
+  "test": {
+    "database": "library_test",
+    "username": "",
+    "password": ""
+  }
+}

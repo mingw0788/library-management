@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="图书管理系统，记录每一本书的流转，让阅读与管理井然有序。">
+    <meta name="color-scheme" content="light">
+    <title>图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body>
+<div class="page-shell">
+    <header class="site-header">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 8.5C12.5 6.2 8.1 5.4 4 6.4V25C8.1 24 12.5 24.8 16 27M16 8.5C19.5 6.2 23.9 5.4 28 6.4V25C23.9 24 19.5 24.8 16 27M16 8.5V27" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </span>
+            <div>
+                <p class="brand-name">图书管理系统</p>
+                <p class="brand-caption">让每一本书，都有迹可循</p>
+            </div>
+        </div>
+        <span class="status-badge"><span class="status-dot" aria-hidden="true"></span>基础首页已就绪</span>
+    </header>
+
+    <main>
+        <section class="hero" aria-labelledby="welcome-title">
+            <p class="eyebrow">阅读有序 · 管理有方</p>
+            <h1 class="hero-title" id="welcome-title">图书管理系统</h1>
+            <p class="hero-description">系统已成功启动</p>
+            <p class="hero-description">从一本书开始，让馆藏与阅读的每一次相遇都有记录。</p>
+        </section>
+
+        <section class="overview-grid" aria-label="系统简介与当前进度">
+            <article class="info-card">
+                <p class="card-label">建设目标</p>
+                <h2 class="card-title">有序管理馆藏</h2>
+                <p class="card-copy">围绕图书与实体副本，逐步建立清晰、可靠的馆藏信息。</p>
+            </article>
+            <article class="info-card">
+                <p class="card-label">服务方向</p>
+                <h2 class="card-title">记录借阅流转</h2>
+                <p class="card-copy">后续将逐步提供借阅与归还服务，让图书流转更清楚。</p>
+            </article>
+            <article class="info-card">
+                <p class="card-label">当前进度</p>
+                <h2 class="card-title">基础页面完成</h2>
+                <p class="card-copy">首页现已可访问，图书与借阅功能将按开发计划逐步开放。</p>
+                <span class="card-status">首页已就绪</span>
+            </article>
+        </section>
+    </main>
+
+    <footer class="page-footer">
+        <p class="footer-note">记录每一本书的流转，连接每一次阅读。</p>
+        <p class="footer-note">图书管理系统</p>
+    </footer>
+</div>
+</body>
+</html>

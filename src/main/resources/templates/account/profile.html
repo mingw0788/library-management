@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>本人资料 · 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body>
+<main class="page-shell">
+    <section class="hero" aria-labelledby="profile-title">
+        <p class="eyebrow">账号设置</p>
+        <h1 class="hero-title" id="profile-title">本人资料</h1>
+        <p class="hero-description">这里只能修改当前账号允许维护的资料。登录名、角色、账号状态和读者证号由系统或工作人员管理。</p>
+        <p><a th:href="@{/account/password}">修改密码</a>　<a th:href="@{/}">返回首页</a></p>
+    </section>
+    <section class="info-card" aria-label="本人资料表单">
+        <p class="card-copy" role="status" th:if="${updated}">资料已保存。</p>
+        <p class="card-copy" role="alert" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+        <p>登录名：<strong th:text="${profile.loginName}"></strong></p>
+        <p>角色：<strong th:text="${profile.role}"></strong>　账号状态：<strong th:text="${profile.status}"></strong></p>
+        <p th:if="${readerAccount}">读者证号：<strong th:text="${profile.readerNo}"></strong></p>
+        <form method="post" th:action="@{/account/profile}">
+            <p>
+                <label for="displayName">姓名</label><br>
+                <input id="displayName" name="displayName" type="text" required maxlength="100"
+                       autocomplete="name" th:value="${profile.displayName}">
+            </p>
+            <p th:if="${readerAccount}">
+                <label for="contact">联系方式（可选）</label><br>
+                <input id="contact" name="contact" type="text" maxlength="100"
+                       autocomplete="tel" th:value="${profile.contact}">
+            </p>
+            <button type="submit">保存资料</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

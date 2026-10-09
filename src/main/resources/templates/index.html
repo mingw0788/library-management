@@ -25,6 +25,7 @@
         <div class="account-actions">
             <span class="status-badge"><span class="status-dot" aria-hidden="true"></span>馆藏目录已开放</span>
             <a th:if="${!authenticated}" th:href="@{/login}">登录</a>
+            <a th:if="${authenticated}" th:href="@{/account/profile}">本人资料</a>
             <form th:if="${authenticated}" method="post" th:action="@{/logout}">
                 <span class="card-copy" th:text="${loginName}"></span>
                 <button type="submit">退出登录</button>

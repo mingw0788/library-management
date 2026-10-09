@@ -4,7 +4,7 @@
 
 ## 数据与时间
 
-- 迁移由 Flyway 按版本顺序执行；当前迁移至 V7，数据库结构与实体由 Hibernate `validate` 核对。应用运行账号只访问 profile 指定的专用数据库。
+- 迁移由 Flyway 按版本顺序执行；当前迁移至 V8（审计表），数据库结构与实体由 Hibernate `validate` 核对。应用运行账号只访问 profile 指定的专用数据库。
 - 事务使用 `READ COMMITTED`，表使用 InnoDB、字符集 `utf8mb4`。
 - 事件时间使用 UTC 的 `Instant`，在 MySQL `DATETIME(6)` 中按 UTC 保存；业务日历使用 `Asia/Shanghai`。应还日使用 `LocalDate` / `DATE`，从借出时刻对应的上海本地日期加配置的自然日数计算。应还当天结束前不算逾期；仅当上海本地当前日期晚于应还日才逾期。规则计算注入 `Clock`，不得依赖运行机器默认时区。
 - 循环规则集中于 `CirculationPolicy` 和 `LoanRules`：同时未还上限及借期可配置，当前默认分别为 5 册和 14 天。基础版续借次数固定为 0。

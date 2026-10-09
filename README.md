@@ -1,112 +1,33 @@
 # 图书管理系统
 
-当前已完成 T01—T22，提供中文首页、登录和强制改密、角色授权、工作人员/读者、分类、书目、副本管理、检索目录、馆员借还、本人/全馆借阅查询、关键操作审计、本人资料和密码管理、统计首页以及安全、并发、性能、部署配置和独立库恢复验收。使用 Spring Boot 4.1.1、Spring MVC、Thymeleaf、MySQL、JPA 和 Flyway。本地部署与恢复说明见[部署与恢复](docs/deployment-recovery.md)。
+这是一个中文、服务端渲染的单馆图书管理系统。当前基础版已完成 T01—T23：管理员、馆员和读者可以按角色使用账号、馆藏目录、实体副本、借还记录和统计功能。项目使用 Java 21、Spring Boot 4.1.1、Maven Wrapper 3.9.16 和 MySQL 8.0.44。
 
-## 当前进度
+新用户请先阅读[三角色操作手册](docs/user-guide.md)。开发者可按[开发与运行说明](docs/development-guide.md)构建、测试、启动和初始化首位管理员；环境、数据库和部署约定分别见[环境基线](docs/environment.md)、[数据库结构](docs/database.md)及[部署与恢复说明](docs/deployment-recovery.md)。每项需求的状态和验收证据见[验收清单](docs/acceptance-checklist.md)与[开发进度](docs/progress.md)。
 
-- T02：创建启动入口、首页、样式、Maven Wrapper 和首页自动测试；构建、实际 HTTP、桌面及 390px 窄屏浏览器验证均通过。实际验收记录见 [开发进度](docs/progress.md)。
-- T01：环境检查已完成；本机 MySQL 8.0.44 与隔离的 dev/test 数据库及受限账号均已验证。
-- T03：MySQL 8.0.44、JPA、Flyway、dev/test/prod 配置隔离和第一份迁移已建立；真实测试记录见 [开发进度](docs/progress.md)。
-- T04—T06：账号密码模型、登录/退出、首次管理员初始化、统一权限与会话有效性已完成。
-- T07：管理员可管理工作人员；管理员和馆员可创建、维护、禁用、重置读者；读者账号与档案采用独立表并在同一事务中创建。
-- T08：管理员和馆员可新增、编辑、查询、删除分类；T09 已用书目外键保护被引用分类。
-- T09：管理员和馆员可维护书目资料、校验 ISBN、归档书目；MySQL 外键已禁止删除正在被书目引用的分类，书目版本号用于拒绝过期编辑。
-- T10：管理员和馆员可逐册登记、查询和注销实体副本；条码唯一，数量从副本状态汇总，未注销副本会阻止书目归档。
-- T11：所有登录用户可按关键词和分类检索有效书目、排序分页并查看详情；页面显示馆藏位置、状态和可借数量。
-- T12：建立借阅记录结构、活动借阅副本唯一约束、集中借期/额度/资格规则和统一数据库锁顺序；数据库约定见 [数据库结构与并发约定](docs/database.md)。
-- T13：馆员按读者证号和馆藏条码办理借出；资格复核、借阅记录和副本状态在统一锁序下同事务更新，竞争和故障回滚已用 MySQL 验证。
-- T14：馆员按借阅编号或馆藏条码办理归还；记录归还时刻和办理人并恢复副本可借状态，禁用读者仍可归还。
-- T15：读者在 `/reader/loans` 查看本人当前及历史借阅；馆员和管理员在 `/staff/loans` 按读者、条码、状态、日期筛选并分页。当前逾期与历史晚还按上海本地日期分别计算。
-- T16：关键成功业务操作写入审计，管理员可分页查询；安全日志不记录凭据或查询参数。
-- T17：三种角色可维护本人资料并主动修改密码；强制改密和旧会话失效规则继续生效。
-- T18：管理员/馆员工作区显示全馆书目、馆藏和借阅统计，读者工作区仅显示本人未还与逾期概况。
-- T19：表单字段反馈、错误页面、分页和窄屏体验已通过桌面/手机浏览器检查。
-- T20：安全回归覆盖角色授权、本人数据、CSRF、旧会话失效、XSS 转义和日志脱敏。
-- T21：真实 MySQL 并发与回滚回归通过；20 个会话访问列表/详情满足性能目标。
-- T22：已完成可执行 JAR、prod 外部配置及独立演练库恢复；三角色登录和借还闭环通过。
+## 本机开发
 
-## 环境
-
-固定 Java 21、Spring Boot 4.1.1、Maven 3.9.16。当前本机使用 Oracle JDK 21.0.1，完整版本记录见 [环境文档](docs/environment.md)。首次使用 Wrapper 会下载固定 Maven 和项目依赖，需要联网；无需另外安装全局 Maven。
-
-项目通过 `.mvn/maven.config` 使用项目级 Maven 设置，依赖从 Google Cloud 托管的 Maven Central HTTPS 镜像获取，缓存放在被忽略的 `.local/maven-repository/`；不会修改本机 Maven 全局设置。当前网络对直连 Maven Central 返回 403/握手错误。个人用户级 Maven 设置仍遵循 Maven 原有合并规则。
-
-## Windows 构建与测试
-
-在 PowerShell 中进入项目目录：
+在 Windows PowerShell 中进入项目目录，先载入只保存在本机的专用测试库和开发库连接，再运行完整验证：
 
 ```powershell
 Set-Location 'E:\AI\图书管理系统\library-management'
-.\mvnw.cmd verify
-```
-
-项目使用本机受限账号连接独立的 `library_test` 数据库。先在当前 PowerShell 会话载入本机连接配置，再运行完整测试：
-
-```powershell
 . .\scripts\set-local-db-env.ps1 -Profile test
 . .\scripts\set-local-db-env.ps1 -Profile dev
 .\mvnw.cmd verify
 ```
 
-测试会连接真实 MySQL 8.0.44、核对数据库隔离、READ COMMITTED、UTC 会话和 Flyway 迁移（当前至 V8），也会运行完整回归并生成可执行 JAR。命令不会清空数据库；请勿把 `.local/mysql-connection.json` 或密码提交到 Git。
+验证会连接隔离的 `library_test` 和 `library_dev`，运行真实 MySQL 回归并生成可执行 JAR。首次构建需要联网下载固定 Maven Wrapper 和项目依赖。完整的首次配置、空库迁移、管理员初始化和常见错误处理步骤见[开发与运行说明](docs/development-guide.md)。
 
-## 启动与停止
+测试通过后启动本机开发实例：
 
 ```powershell
 . .\scripts\set-local-db-env.ps1 -Profile dev
 .\mvnw.cmd spring-boot:run
 ```
 
-浏览器访问 [本机首页](http://localhost:8080/)。当前仅监听本机地址。结束时在启动窗口按 `Ctrl+C`。
+浏览器访问 <http://localhost:8080/>。应用默认只监听本机地址；停止时在启动窗口按 `Ctrl+C`。`.local/mysql-connection.json`、本机密码、日志、备份及构建产物都不应提交到 Git。
 
-也可以在完成构建后运行：
+## MVP 范围
 
-```powershell
-. .\scripts\set-local-db-env.ps1 -Profile dev
-java -jar target\library-management-0.0.1-SNAPSHOT.jar
-```
+基础版包括角色授权、账号和读者档案、分类/书目/副本管理、目录检索、馆员办理借出和归还、借阅查询、审计与统计。默认最多同时借 5 册、借期 14 天。当前**没有实现续借和预约**；相关计划需求 F15—F16 仍属未选择的扩展，不要把它们作为已提供功能。
 
-如果 8080 已被其他程序占用，可仅对本次运行指定另一个端口：
-
-```powershell
-java -jar target\library-management-0.0.1-SNAPSHOT.jar --server.port=8081
-```
-
-这时访问 `http://localhost:8081/`，结束时同样按 `Ctrl+C`。不要为释放端口随意结束其他程序。
-
-## 关键文件与请求过程
-
-| 文件 | 职责 |
-|---|---|
-| `pom.xml` | 固定 Java / Spring Boot，声明网页、模板和测试依赖 |
-| `mvnw.cmd`、`.mvn/wrapper/` | 下载并使用固定的 Maven 构建项目 |
-| `src/main/java/com/example/library/LibraryApplication.java` | 应用启动入口，启动内嵌服务器并发现控制器 |
-| `src/main/java/com/example/library/controller/HomeController.java` | 接收首页请求，返回模板名称 `index` |
-| `src/main/resources/templates/index.html` | Thymeleaf 渲染的中文首页 |
-| `src/main/resources/static/css/library.css` | 首页布局、配色及小屏幕样式 |
-| `src/main/resources/application.yml` | 应用名称、本机监听地址和默认端口 |
-| `src/main/resources/application-*.yml` | 按 dev/test/prod 隔离数据源，凭据只从外部环境变量读取 |
-| `src/main/resources/db/migration/V1__create_system_guard.sql` | 建立系统锁表并插入唯一管理员集合锁行 |
-| `src/main/resources/db/migration/V7__create_loan.sql` | 建立借阅历史表和同一副本至多一条未还借阅的数据库约束 |
-| `src/main/java/com/example/library/loan/LoanCheckoutService.java` | 按统一加锁顺序复核资格并事务化写入借阅和副本状态 |
-| `src/main/java/com/example/library/controller/LoanCheckoutController.java` | 展示工作人员借出页面并接收借出提交 |
-| `src/main/java/com/example/library/loan/LoanReturnService.java` | 按借阅编号或条码锁定借阅并事务化完成归还 |
-| `src/main/java/com/example/library/controller/LoanReturnController.java` | 展示归还页面并接收工作人员归还请求 |
-| `src/main/java/com/example/library/loan/LoanQueryService.java` | 按登录读者或工作人员条件分页查询借阅并派生逾期状态 |
-| `src/main/java/com/example/library/controller/LoanQueryController.java` | 提供本人借阅与全馆借阅查询页面入口 |
-| `src/main/java/com/example/library/dashboard/DashboardStatisticsService.java` | 只读查询工作人员统计和当前读者本人概况 |
-| `scripts/set-local-db-env.ps1` | 从被忽略的本机 JSON 配置载入 dev 或 test 环境变量，不显示密码 |
-| `src/test/java/com/example/library/web/HomePageTest.java` | 完整应用上下文中的首页请求测试 |
-
-一次首页请求依次经过：浏览器请求 `/` → Spring MVC 找到 `HomeController` → 返回视图名 `index` → Thymeleaf 渲染 HTML → 浏览器加载本地 CSS。此过程没有数据库访问。
-
-## 计划与本机配置
-
-- [项目计划与已采用调整](docs/plan.md)
-- [需求与权限规则](docs/requirements.md)
-- [开发环境与数据库约定](docs/environment.md)
-- [数据库结构与并发约定](docs/database.md)
-- [部署与恢复说明](docs/deployment-recovery.md)
-- [逐步验收与剩余问题](docs/progress.md)
-
-本机数据库凭据只放在被忽略的 `.local/` 目录，公开 JSON 示例不包含真实值。应用只从当前激活 profile 对应的环境变量读取连接信息：dev 固定连接 `library_dev`，test 固定连接 `library_test`，prod 固定连接由部署环境单独提供的 `library_prod`；缺少变量时启动失败。开发、测试和恢复演练账号分别只访问各自数据库。不要把 provisioning 管理连接用于应用运行。
+本项目目前只完成本地准备和独立数据库恢复演练，没有发布到公网或生产环境。公网运行前提和回退边界见[部署与恢复说明](docs/deployment-recovery.md)。

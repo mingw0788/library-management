@@ -13,6 +13,10 @@ import java.util.Optional;
 public interface BookCopyRepository extends JpaRepository<BookCopy, Long> {
     Optional<BookCopy> findByBarcode(String barcode);
 
+    @Query("select new com.example.library.catalog.BookCopyReference(c.id, c.book.id) " +
+            "from BookCopy c where c.barcode = :barcode")
+    Optional<BookCopyReference> findReferenceByBarcode(@Param("barcode") String barcode);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from BookCopy c where c.id = :id")
     Optional<BookCopy> findByIdForUpdate(@Param("id") Long id);

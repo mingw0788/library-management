@@ -65,6 +65,13 @@ public class BookCopy {
         status = BookCopyStatus.WITHDRAWN;
     }
 
+    public void checkout() {
+        if (status != BookCopyStatus.AVAILABLE) {
+            throw new IllegalArgumentException("该副本当前不可借");
+        }
+        status = BookCopyStatus.ON_LOAN;
+    }
+
     @PrePersist
     @PreUpdate
     private void validate() {

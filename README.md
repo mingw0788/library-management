@@ -1,6 +1,6 @@
 # 图书管理系统
 
-当前已完成 T01—T12，提供中文首页、登录和强制改密、角色授权、工作人员/读者、分类、书目、副本管理、检索目录及借阅模型和规则；借出/归还办理页面尚未实现。使用 Spring Boot 4.1.1、Spring MVC、Thymeleaf、MySQL、JPA 和 Flyway。
+当前已完成 T01—T13，提供中文首页、登录和强制改密、角色授权、工作人员/读者、分类、书目、副本管理、检索目录、借阅模型和馆员借出办理；归还办理尚未实现。使用 Spring Boot 4.1.1、Spring MVC、Thymeleaf、MySQL、JPA 和 Flyway。
 
 ## 当前进度
 
@@ -13,7 +13,8 @@
 - T09：管理员和馆员可维护书目资料、校验 ISBN、归档书目；MySQL 外键已禁止删除正在被书目引用的分类，书目版本号用于拒绝过期编辑。
 - T10：管理员和馆员可逐册登记、查询和注销实体副本；条码唯一，数量从副本状态汇总，未注销副本会阻止书目归档。
 - T11：所有登录用户可按关键词和分类检索有效书目、排序分页并查看详情；页面显示馆藏位置、状态和可借数量。
-- T12：建立借阅记录结构、活动借阅副本唯一约束、集中借期/额度/资格规则和统一数据库锁顺序；借出与归还办理留待 T13/T14。数据库约定见 [数据库结构与并发约定](docs/database.md)。
+- T12：建立借阅记录结构、活动借阅副本唯一约束、集中借期/额度/资格规则和统一数据库锁顺序；数据库约定见 [数据库结构与并发约定](docs/database.md)。
+- T13：馆员按读者证号和馆藏条码办理借出；资格复核、借阅记录和副本状态在统一锁序下同事务更新，竞争和故障回滚已用 MySQL 验证。
 
 ## 环境
 
@@ -78,6 +79,8 @@ java -jar target\library-management-0.0.1-SNAPSHOT.jar --server.port=8081
 | `src/main/resources/application-*.yml` | 按 dev/test/prod 隔离数据源，凭据只从外部环境变量读取 |
 | `src/main/resources/db/migration/V1__create_system_guard.sql` | 建立系统锁表并插入唯一管理员集合锁行 |
 | `src/main/resources/db/migration/V7__create_loan.sql` | 建立借阅历史表和同一副本至多一条未还借阅的数据库约束 |
+| `src/main/java/com/example/library/loan/LoanCheckoutService.java` | 按统一加锁顺序复核资格并事务化写入借阅和副本状态 |
+| `src/main/java/com/example/library/controller/LoanCheckoutController.java` | 展示工作人员借出页面并接收借出提交 |
 | `scripts/set-local-db-env.ps1` | 从被忽略的本机 JSON 配置载入 dev 或 test 环境变量，不显示密码 |
 | `src/test/java/com/example/library/web/HomePageTest.java` | 完整应用上下文中的首页请求测试 |
 

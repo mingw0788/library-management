@@ -72,6 +72,27 @@ public class BookCopy {
         status = BookCopyStatus.ON_LOAN;
     }
 
+    public void holdForReservation() {
+        if (status != BookCopyStatus.AVAILABLE) {
+            throw new IllegalArgumentException("只有可借副本可以分配给预约");
+        }
+        status = BookCopyStatus.HELD;
+    }
+
+    public void releaseReservationHold() {
+        if (status != BookCopyStatus.HELD) {
+            throw new IllegalArgumentException("该副本当前没有预约保留");
+        }
+        status = BookCopyStatus.AVAILABLE;
+    }
+
+    public void checkoutFromReservationHold() {
+        if (status != BookCopyStatus.HELD) {
+            throw new IllegalArgumentException("该副本当前没有预约保留");
+        }
+        status = BookCopyStatus.ON_LOAN;
+    }
+
     public void returnFromLoan() {
         if (status != BookCopyStatus.ON_LOAN) {
             throw new IllegalArgumentException("该副本当前没有借出，不能办理归还");

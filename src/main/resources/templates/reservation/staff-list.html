@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>预约取书（测试环境）· 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">测试环境内部功能</p>
+        <h1 class="hero-title">到书保留与取书</h1>
+        <p class="hero-description">只显示已分配副本的预约。办理时请核对读者证号；读者资格会在提交时重新检查。到期自动释放与过期拦截留给 X04。</p>
+        <p th:if="${notice}" th:text="${notice}" role="status"></p>
+        <p th:if="${error}" th:text="${error}" role="alert"></p>
+        <p th:if="${#lists.isEmpty(reservations)}">目前没有等待取书的预约。</p>
+        <div th:unless="${#lists.isEmpty(reservations)}" class="table-scroll">
+            <table>
+                <thead><tr><th>书目</th><th>读者</th><th>读者证号</th><th>保留截止</th><th>办理</th></tr></thead>
+                <tbody>
+                <tr th:each="reservation : ${reservations}">
+                    <td th:text="${reservation.bookTitle}"></td>
+                    <td th:text="${reservation.readerName}"></td>
+                    <td th:text="${reservation.readerNo}"></td>
+                    <td th:text="${reservation.holdExpiresAt}"></td>
+                    <td>
+                        <form method="post" th:action="@{/staff/reservations/{id}/fulfill(id=${reservation.reservationId})}">
+                            <label th:for="${'reader-no-' + reservation.reservationId}">核对读者证号</label>
+                            <input th:id="${'reader-no-' + reservation.reservationId}" name="readerNo" required maxlength="50">
+                            <button type="submit">确认取书</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <p><a th:href="@{/staff/loans}">返回借还管理</a></p>
+    </section>
+</main></body>
+</html>

@@ -39,7 +39,7 @@ class DatabaseDevelopmentProfileTest {
         assertEquals("+00:00", jdbcTemplate.queryForObject("SELECT @@session.time_zone", String.class));
         assertEquals(1, jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM system_guard WHERE guard_key = 'ACTIVE_ADMIN_SET'", Integer.class));
-        assertEquals("10", jdbcTemplate.queryForObject(
+        assertEquals("11", jdbcTemplate.queryForObject(
                 "SELECT version FROM flyway_schema_history WHERE success = 1 " +
                         "ORDER BY installed_rank DESC LIMIT 1", String.class));
         assertEquals(1, jdbcTemplate.queryForObject(
@@ -54,6 +54,7 @@ class DatabaseDevelopmentProfileTest {
     void reservationFeatureIsUnavailableInDevelopmentProfileByDefault() throws Exception {
         assertFalse(applicationContext.containsBean("reservationService"));
         assertFalse(applicationContext.containsBean("reservationController"));
+        assertFalse(applicationContext.containsBean("staffReservationController"));
 
         mvc.perform(get("/reader/reservations").with(user("test-reader").roles("READER")))
                 .andExpect(status().isNotFound());
@@ -62,6 +63,11 @@ class DatabaseDevelopmentProfileTest {
                 .andExpect(status().isNotFound());
         mvc.perform(post("/reader/reservations/1/cancel").with(user("test-reader").roles("READER"))
                         .with(csrf()))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/staff/reservations").with(user("test-staff").roles("LIBRARIAN")))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/staff/reservations/1/fulfill").with(user("test-staff").roles("LIBRARIAN"))
+                        .with(csrf()).param("readerNo", "TEST-1"))
                 .andExpect(status().isNotFound());
     }
 }

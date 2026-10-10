@@ -1,4 +1,5 @@
 package com.example.library.reservation;
 
-public record ReservationReference(Long reservationId, Long readerId, Long readerUserId, Long bookId) {
+public record ReservationReference(Long reservationId, Long readerId, Long readerUserId, Long bookId,
+                                   Long copyId, ReservationStatus status) {
 }

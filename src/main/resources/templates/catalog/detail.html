@@ -21,7 +21,7 @@
         <h2 class="card-title">馆藏副本</h2>
         <p th:if="${#lists.isEmpty(detail.copies)}">目前没有可流通副本。</p>
         <article th:each="copy : ${detail.copies}" class="reader-row">
-            <p>状态：<strong th:text="${copy.status == T(com.example.library.catalog.BookCopyStatus).AVAILABLE ? '可借' : '借出中'}"></strong></p>
+            <p>状态：<strong th:text="${copy.status == T(com.example.library.catalog.BookCopyStatus).AVAILABLE ? '可借' : (copy.status == T(com.example.library.catalog.BookCopyStatus).HELD ? '预约保留' : '借出中')}"></strong></p>
             <p>馆藏位置：<span th:text="${copy.shelfLocation == null ? '未填写' : copy.shelfLocation}"></span></p>
         </article>
         <p><a th:href="@{/catalog}">返回检索目录</a></p>

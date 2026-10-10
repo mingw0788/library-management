@@ -38,7 +38,7 @@
         <p th:if="${#lists.isEmpty(books)}">没有匹配的书目。</p>
         <article th:each="book : ${books}" class="reader-row">
             <p>书目编号 <span th:text="${book.id}"></span> · <strong th:text="${book.title}"></strong> · <span th:text="${book.status}"></span></p>
-            <div th:with="inventory=${copyInventory[book.id]}"><p>副本数量：可借 <span th:text="${inventory.available}"></span> · 借出 <span th:text="${inventory.onLoan}"></span> · 已注销 <span th:text="${inventory.withdrawn}"></span> · 合计 <span th:text="${inventory.total()}"></span></p></div>
+            <div th:with="inventory=${copyInventory[book.id]}"><p>副本数量：可借 <span th:text="${inventory.available}"></span> · 借出 <span th:text="${inventory.onLoan}"></span> · 预约保留 <span th:text="${inventory.held}"></span> · 已注销 <span th:text="${inventory.withdrawn}"></span> · 合计 <span th:text="${inventory.total()}"></span></p></div>
             <p th:if="${book.status.name() == 'ACTIVE'}">编辑书目资料时请使用当前版本；如果他人先提交了修改，旧版本会被拒绝。</p>
             <form method="post" th:if="${book.status.name() == 'ACTIVE'}" th:action="@{/staff/books/{id}/update(id=${book.id})}">
                 <input type="hidden" name="version" th:value="${book.version}">

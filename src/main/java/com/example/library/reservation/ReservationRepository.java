@@ -16,16 +16,14 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     @Query("select r from Reservation r where r.id = :id")
     Optional<Reservation> findByIdForUpdate(@Param("id") Long id);
 
-    @Query("select new com.example.library.reservation.ReservationReference(r.id, r.readerId, p.userId, r.bookId) " +
-            "from Reservation r join ReaderProfile p on p.id = r.readerId " +
-            "where r.id = :id and r.status = :status")
-    Optional<ReservationReference> findReferenceByIdAndStatus(@Param("id") Long id,
-                                                                @Param("status") ReservationStatus status);
-
-    boolean existsByReaderIdAndBookIdAndStatus(Long readerId, Long bookId, ReservationStatus status);
+    @Query("select new com.example.library.reservation.ReservationReference(r.id, r.readerId, p.userId, " +
+            "r.bookId, r.copyId, r.status) from Reservation r join ReaderProfile p on p.id = r.readerId " +
+            "where r.id = :id and r.status in :statuses")
+    Optional<ReservationReference> findActiveReferenceById(@Param("id") Long id,
+                                                            @Param("statuses") List<ReservationStatus> statuses);
 
     @Query("select new com.example.library.reservation.ReservationViewRow(r.id, r.bookId, b.title, r.status, " +
-            "r.createdAt) from Reservation r join Book b on b.id = r.bookId " +
+            "r.createdAt, r.holdExpiresAt) from Reservation r join Book b on b.id = r.bookId " +
             "where r.readerId = :readerId order by r.createdAt desc, r.id desc")
     List<ReservationViewRow> findRowsByReaderId(@Param("readerId") Long readerId);
 
@@ -36,4 +34,37 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                              @Param("reservationId") Long reservationId);
 
     List<Reservation> findByBookIdAndStatusOrderByCreatedAtAscIdAsc(Long bookId, ReservationStatus status);
+
+    @Query("select distinct r.bookId from Reservation r where r.readerId = :readerId " +
+            "and r.status in :statuses order by r.bookId asc")
+    List<Long> findActiveBookIdsByReader(@Param("readerId") Long readerId,
+                                         @Param("statuses") List<ReservationStatus> statuses);
+
+    @Query("select new com.example.library.reservation.ReservationReference(r.id, r.readerId, p.userId, " +
+            "r.bookId, r.copyId, r.status) from Reservation r join ReaderProfile p on p.id = r.readerId " +
+            "where r.readerId = :readerId and r.bookId = :bookId and r.status in :statuses order by r.id asc")
+    List<ReservationReference> findActiveReferencesByReaderAndBook(@Param("readerId") Long readerId,
+                                                                     @Param("bookId") Long bookId,
+                                                                     @Param("statuses") List<ReservationStatus> statuses);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Reservation r where r.id in :ids order by r.id asc")
+    List<Reservation> findAllByIdInForUpdateOrderByIdAsc(@Param("ids") List<Long> ids);
+
+    @Query("select new com.example.library.reservation.ReservationQueueCandidate(r.id, r.readerId, p.userId, " +
+            "u.role, u.status, r.createdAt) from Reservation r join ReaderProfile p on p.id = r.readerId " +
+            "join AppUser u on u.id = p.userId where r.bookId = :bookId and r.status = :status " +
+            "order by r.createdAt asc, r.id asc")
+    List<ReservationQueueCandidate> findQueueCandidatesByBookId(@Param("bookId") Long bookId,
+                                                                 @Param("status") ReservationStatus status);
+
+    @Query("select new com.example.library.reservation.ReservationStaffItem(r.id, p.id, p.readerNo, u.displayName, " +
+            "b.title, r.createdAt, r.holdExpiresAt) from Reservation r join ReaderProfile p on p.id = r.readerId " +
+            "join AppUser u on u.id = p.userId join Book b on b.id = r.bookId " +
+            "where r.status = :status order by r.holdExpiresAt asc, r.id asc")
+    List<ReservationStaffItem> findReadyRowsForStaff(@Param("status") ReservationStatus status);
+
+    boolean existsByBookIdAndStatusIn(Long bookId, List<ReservationStatus> statuses);
+
+    boolean existsByReaderIdAndBookIdAndStatusIn(Long readerId, Long bookId, List<ReservationStatus> statuses);
 }

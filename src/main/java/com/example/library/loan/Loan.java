@@ -81,6 +81,11 @@ public class Loan {
         this.version = 0;
     }
 
+    public static Loan fromReservationPickup(ReaderProfile reader, BookCopy copy, Instant borrowedAt,
+                                             LocalDate dueDate, AppUser checkoutOperator) {
+        return new Loan(reader, copy, borrowedAt, dueDate, checkoutOperator);
+    }
+
     public void returnTo(Instant returnedAt, AppUser returnOperator) {
         if (this.returnedAt != null || returnedAt == null || returnOperator == null) {
             throw new IllegalArgumentException("该借阅已归还或归还资料不完整");

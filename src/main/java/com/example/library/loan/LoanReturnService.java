@@ -12,6 +12,8 @@ import com.example.library.catalog.BookCopy;
 import com.example.library.catalog.BookCopyRepository;
 import com.example.library.catalog.BookCopyStatus;
 import com.example.library.catalog.BookRepository;
+import com.example.library.reservation.ReservationService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,10 +36,11 @@ public class LoanReturnService {
     private final LoanRepository loans;
     private final Clock circulationClock;
     private final AuditLogService auditLogs;
+    private final ObjectProvider<ReservationService> reservationService;
 
     public LoanReturnService(AppUserRepository users, ReaderProfileRepository readers, BookRepository books,
                              BookCopyRepository copies, LoanRepository loans, Clock circulationClock,
-                             AuditLogService auditLogs) {
+                             AuditLogService auditLogs, ObjectProvider<ReservationService> reservationService) {
         this.users = users;
         this.readers = readers;
         this.books = books;
@@ -45,6 +48,7 @@ public class LoanReturnService {
         this.loans = loans;
         this.circulationClock = circulationClock;
         this.auditLogs = auditLogs;
+        this.reservationService = reservationService;
     }
 
     @Transactional
@@ -112,6 +116,7 @@ public class LoanReturnService {
         loans.saveAndFlush(loan);
         copies.saveAndFlush(copy);
         auditLogs.recordCurrent(operatorId, actorRole, "LOAN_RETURNED", "LOAN", loan.getId(), "办理归还");
+        reservationService.ifAvailable(service -> service.allocateAvailableCopy(book.getId(), copy));
         return loan;
     }
 

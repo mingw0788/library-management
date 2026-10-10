@@ -1,15 +1,27 @@
 package com.example.library.loan;
 
+import com.example.library.reservation.ReservationRepository;
+import com.example.library.reservation.ReservationStatus;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /**
- * Central extension point for the reservation rule added by X02.
- * X01 has no reservation table or active reservation states, so this guard currently permits renewal.
+ * Prevents extending a loan while readers are waiting for or holding this book.
  */
 @Component
 public class ReservationRenewalGuard {
 
+    private final ReservationRepository reservations;
+
+    public ReservationRenewalGuard(ReservationRepository reservations) {
+        this.reservations = reservations;
+    }
+
     public void assertNoActiveReservation(Long readerProfileId, Long bookId) {
-        // Reservation eligibility will be checked here when the reservation model is introduced in X02.
+        if (reservations.existsByBookIdAndStatusIn(bookId,
+                List.of(ReservationStatus.PENDING, ReservationStatus.READY))) {
+            throw new IllegalArgumentException("该书目有活动预约，不能续借");
+        }
     }
 }

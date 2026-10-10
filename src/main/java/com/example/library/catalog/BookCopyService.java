@@ -2,6 +2,10 @@ package com.example.library.catalog;
 
 import com.example.library.audit.AuditLogService;
 import com.example.library.account.UserRole;
+import com.example.library.reservation.ReservationRepository;
+import com.example.library.reservation.ReservationService;
+import com.example.library.reservation.ReservationStatus;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +21,16 @@ public class BookCopyService {
     private final BookRepository books;
     private final BookCopyRepository copies;
     private final AuditLogService auditLogs;
+    private final ReservationRepository reservations;
+    private final ObjectProvider<ReservationService> reservationService;
 
-    public BookCopyService(BookRepository books, BookCopyRepository copies, AuditLogService auditLogs) {
+    public BookCopyService(BookRepository books, BookCopyRepository copies, AuditLogService auditLogs,
+                           ReservationRepository reservations, ObjectProvider<ReservationService> reservationService) {
         this.books = books;
         this.copies = copies;
         this.auditLogs = auditLogs;
+        this.reservations = reservations;
+        this.reservationService = reservationService;
     }
 
     @Transactional(readOnly = true)
@@ -50,6 +59,7 @@ public class BookCopyService {
         }
         BookCopy copy = copies.saveAndFlush(new BookCopy(book, normalizedBarcode, normalizedLocation));
         auditLogs.recordCurrent(actorRole, "COPY_REGISTERED", "BOOK_COPY", copy.getId(), "登记实体副本");
+        reservationService.ifAvailable(service -> service.allocateAvailableCopy(bookId, copy));
         return copy;
     }
 
@@ -57,7 +67,18 @@ public class BookCopyService {
     public void withdraw(UserRole actorRole, Long id) {
         requireStaff(actorRole);
         if (id == null) throw new IllegalArgumentException("副本编号不能为空");
+        BookCopyReference reference = copies.findReferenceById(id)
+                .orElseThrow(() -> new IllegalArgumentException("副本不存在"));
+        Book book = books.findByIdForUpdate(reference.bookId())
+                .orElseThrow(() -> new IllegalArgumentException("副本所属书目不存在"));
         BookCopy copy = copies.findByIdForUpdate(id).orElseThrow(() -> new IllegalArgumentException("副本不存在"));
+        if (!copy.getBookId().equals(book.getId())) throw new IllegalArgumentException("副本所属书目已发生变化");
+        if (copy.getStatus() == BookCopyStatus.AVAILABLE
+                && copies.countByBook_IdAndStatusNot(book.getId(), BookCopyStatus.WITHDRAWN) == 1
+                && reservations.existsByBookIdAndStatusIn(book.getId(),
+                List.of(ReservationStatus.PENDING, ReservationStatus.READY))) {
+            throw new IllegalArgumentException("该书目仍有活动预约，不能注销最后一册可流通副本");
+        }
         copy.withdraw();
         copies.saveAndFlush(copy);
         auditLogs.recordCurrent(actorRole, "COPY_WITHDRAWN", "BOOK_COPY", copy.getId(), "注销实体副本");
@@ -67,19 +88,20 @@ public class BookCopyService {
     public Map<Long, BookCopyInventory> inventoryByBookIds(Collection<Long> bookIds) {
         if (bookIds == null || bookIds.isEmpty()) return Map.of();
         Map<Long, long[]> totals = new HashMap<>();
-        bookIds.forEach(id -> totals.put(id, new long[3]));
+        bookIds.forEach(id -> totals.put(id, new long[4]));
         for (BookCopySummary summary : copies.summarizeByBookIds(bookIds)) {
             long[] counts = totals.get(summary.bookId());
             int slot = switch (summary.status()) {
                 case AVAILABLE -> 0;
                 case ON_LOAN -> 1;
-                case WITHDRAWN -> 2;
+                case HELD -> 2;
+                case WITHDRAWN -> 3;
             };
             counts[slot] = summary.quantity();
         }
         Map<Long, BookCopyInventory> result = new HashMap<>();
         totals.forEach((id, counts) -> result.put(id,
-                new BookCopyInventory(counts[0], counts[1], counts[2])));
+                new BookCopyInventory(counts[0], counts[1], counts[2], counts[3])));
         return Map.copyOf(result);
     }
 

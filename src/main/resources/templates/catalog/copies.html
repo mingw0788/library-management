@@ -32,15 +32,16 @@
         <h2 class="card-title">副本清单</h2>
         <p th:if="${#lists.isEmpty(copies)}">没有匹配的副本。</p>
         <article th:each="copy : ${copies}" class="reader-row">
-            <p><strong th:text="${copy.book.title}"></strong> · 条码 <span th:text="${copy.barcode}"></span> · 状态 <span th:text="${copy.status}"></span></p>
+            <p><strong th:text="${copy.book.title}"></strong> · 条码 <span th:text="${copy.barcode}"></span> · 状态 <span th:text="${copy.status.name() == 'AVAILABLE' ? '可借' : (copy.status.name() == 'ON_LOAN' ? '借出中' : (copy.status.name() == 'HELD' ? '预约保留' : '已注销'))}"></span></p>
             <p>位置：<span th:text="${copy.shelfLocation == null ? '未填写' : copy.shelfLocation}"></span></p>
             <div th:with="inventory=${copyInventory[copy.bookId]}">
-                <p>该书目数量：可借 <span th:text="${inventory.available}"></span> · 借出 <span th:text="${inventory.onLoan}"></span> · 已注销 <span th:text="${inventory.withdrawn}"></span> · 合计 <span th:text="${inventory.total()}"></span></p>
+                <p>该书目数量：可借 <span th:text="${inventory.available}"></span> · 借出 <span th:text="${inventory.onLoan}"></span> · 预约保留 <span th:text="${inventory.held}"></span> · 已注销 <span th:text="${inventory.withdrawn}"></span> · 合计 <span th:text="${inventory.total()}"></span></p>
             </div>
             <form method="post" th:if="${copy.status.name() == 'AVAILABLE'}" th:action="@{/staff/copies/{id}/withdraw(id=${copy.id})}">
                 <button type="submit">注销此副本</button>
             </form>
             <p th:if="${copy.status.name() == 'WITHDRAWN'}">副本已注销，不会计入可借数量。</p>
+            <p th:if="${copy.status.name() == 'HELD'}">该副本已为预约读者保留，不能被其他借出操作取走。</p>
         </article>
         <p><a th:href="@{/staff/books}">返回书目管理</a>　<a th:href="@{/staff/loans/checkout}">办理借出</a>　<a th:href="@{/staff/loans/return}">办理归还</a>　<a th:href="@{/staff}">返回工作人员工作区</a></p>
     </section>

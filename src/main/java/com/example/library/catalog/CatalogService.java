@@ -75,18 +75,20 @@ public class CatalogService {
         if (pageBooks.isEmpty()) return Map.of();
         List<Long> ids = pageBooks.stream().map(Book::getId).toList();
         Map<Long, long[]> values = new HashMap<>();
-        ids.forEach(id -> values.put(id, new long[3]));
+        ids.forEach(id -> values.put(id, new long[4]));
         for (BookCopySummary summary : copies.summarizeByBookIds(ids)) {
             long[] counts = values.get(summary.bookId());
             int index = switch (summary.status()) {
                 case AVAILABLE -> 0;
                 case ON_LOAN -> 1;
-                case WITHDRAWN -> 2;
+                case HELD -> 2;
+                case WITHDRAWN -> 3;
             };
             counts[index] = summary.quantity();
         }
         Map<Long, BookCopyInventory> result = new HashMap<>();
-        values.forEach((id, count) -> result.put(id, new BookCopyInventory(count[0], count[1], count[2])));
+        values.forEach((id, count) -> result.put(id,
+                new BookCopyInventory(count[0], count[1], count[2], count[3])));
         return Map.copyOf(result);
     }
 

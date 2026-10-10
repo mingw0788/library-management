@@ -1,6 +1,8 @@
 package com.example.library.account;
 
 import com.example.library.audit.AuditLogService;
+import com.example.library.reservation.ReservationService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,15 +19,17 @@ public class AccountService {
     private final ReaderProfileRepository readerProfiles;
     private final JdbcTemplate jdbcTemplate;
     private final AuditLogService auditLogs;
+    private final ObjectProvider<ReservationService> reservationService;
 
     public AccountService(AppUserRepository users, PasswordEncoder passwordEncoder,
                           ReaderProfileRepository readerProfiles, JdbcTemplate jdbcTemplate,
-                          AuditLogService auditLogs) {
+                          AuditLogService auditLogs, ObjectProvider<ReservationService> reservationService) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.readerProfiles = readerProfiles;
         this.jdbcTemplate = jdbcTemplate;
         this.auditLogs = auditLogs;
+        this.reservationService = reservationService;
     }
 
     @Transactional
@@ -135,11 +139,14 @@ public class AccountService {
         if (userId == null) throw new IllegalArgumentException("账号编号不能为空");
         AppUser reader = users.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("账号不存在"));
-        if (reader.getRole() != UserRole.READER || readerProfiles.findByUserId(userId).isEmpty()) {
+        if (reader.getRole() != UserRole.READER) {
             throw new IllegalArgumentException("目标账号不是有效读者");
         }
+        var profile = readerProfiles.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new IllegalArgumentException("目标账号不是有效读者"));
         reader.changeStatus(UserStatus.DISABLED);
         auditLogs.recordCurrent(actorRole, "READER_DISABLED", "USER", reader.getId(), "停用读者账号");
+        reservationService.ifAvailable(service -> service.cancelForDisabledReader(profile.getId(), actorRole));
     }
 
     @Transactional

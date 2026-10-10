@@ -4,6 +4,8 @@
 
 新用户请先阅读[三角色操作手册](docs/user-guide.md)。开发者可按[开发与运行说明](docs/development-guide.md)构建、测试、启动和初始化首位管理员；环境、数据库和部署约定分别见[环境基线](docs/environment.md)、[数据库结构](docs/database.md)及[部署与恢复说明](docs/deployment-recovery.md)。每项需求的状态和验收证据见[验收清单](docs/acceptance-checklist.md)与[开发进度](docs/progress.md)。
 
+包含全部扩展的最新本地运行包、固定版本源码和启动说明见[完整版本地交付](docs/delivery.md)。交付包保存在本机忽略目录，不随 Git 源码分发。
+
 ## 本机开发
 
 在 Windows PowerShell 中进入项目目录，先载入只保存在本机的专用测试库和开发库连接，再运行完整验证：

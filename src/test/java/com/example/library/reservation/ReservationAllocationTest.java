@@ -28,7 +28,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
@@ -39,6 +43,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.Clock;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -49,6 +55,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.hamcrest.Matchers.containsString;
@@ -68,6 +75,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(ReservationAllocationTest.MutableClockConfiguration.class)
 class ReservationAllocationTest {
 
     private static final String PASSWORD = "reservation-hold-test-pass-123";
@@ -90,6 +98,8 @@ class ReservationAllocationTest {
     @Autowired private CategoryRepository categories;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private Clock circulationClock;
+    @Autowired private MutableClock mutableClock;
+    @Autowired private ReservationExpiryScheduler expiryScheduler;
     @Autowired private MockMvc mvc;
     @MockitoSpyBean private AuditLogService auditLogs;
 
@@ -104,6 +114,7 @@ class ReservationAllocationTest {
 
     @BeforeEach
     void prepare() {
+        mutableClock.setInstant(Instant.now().truncatedTo(ChronoUnit.MICROS));
         reset(auditLogs);
         category = categoryService.create(UserRole.ADMIN, "X03 分类-" + token());
         categoryIds.add(category.getId());
@@ -115,6 +126,8 @@ class ReservationAllocationTest {
     void clean() {
         reset(auditLogs);
         userIds.forEach(id -> jdbc.update("DELETE FROM audit_log WHERE actor_user_id = ?", id));
+        profileIds.forEach(id -> jdbc.update("DELETE FROM audit_log WHERE target_type = 'RESERVATION' " +
+                "AND target_id IN (SELECT id FROM reservation WHERE reader_id = ?)", id));
         profileIds.forEach(id -> jdbc.update("DELETE FROM reservation WHERE reader_id = ?", id));
         profileIds.forEach(id -> jdbc.update("DELETE FROM loan WHERE reader_id = ?", id));
         copyIds.forEach(id -> copies.findById(id).ifPresent(copies::delete));
@@ -277,6 +290,227 @@ class ReservationAllocationTest {
         assertEquals(ReservationStatus.READY, thirdReady.getStatus());
         assertEquals(copy.getId(), thirdReady.getCopyId());
         assertEquals(BookCopyStatus.HELD, copies.findById(copy.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void pickupOneMicrosecondBeforeDeadlineSucceeds() {
+        ReaderFixture owner = reader();
+        ReaderFixture borrower = reader();
+        Book book = book("截止前取书");
+        BookCopy copy = copy(book);
+        Loan loan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
+                borrower.profile().getReaderNo(), copy.getBarcode());
+        Reservation reservation = reservations.createForReader(owner.account().getId(), book.getId());
+        returns.returnByLoanId(librarian.getId(), UserRole.LIBRARIAN, loan.getId());
+
+        Instant pickupAt = reservationRows.findById(reservation.getId()).orElseThrow()
+                .getHoldExpiresAt().minusNanos(1_000);
+        mutableClock.setInstant(pickupAt);
+        ReservationFulfillmentResult result = reservations.fulfillForReader(
+                librarian.getId(), UserRole.LIBRARIAN, reservation.getId(), owner.profile().getReaderNo());
+
+        assertFalse(result.expired());
+        Reservation fulfilled = reservationRows.findById(reservation.getId()).orElseThrow();
+        assertEquals(ReservationStatus.FULFILLED, fulfilled.getStatus());
+        assertEquals(pickupAt, fulfilled.getFulfilledAt());
+        assertEquals(BookCopyStatus.ON_LOAN, copies.findById(copy.getId()).orElseThrow().getStatus());
+        assertEquals(1L, loans.countByReader_IdAndReturnedAtIsNull(owner.profile().getId()));
+    }
+
+    @Test
+    void pickupAtExactDeadlineExpiresAndReallocatesInTheRequest() throws Exception {
+        ReaderFixture owner = reader();
+        ReaderFixture next = reader();
+        ReaderFixture borrower = reader();
+        Book book = book("截止时重分配");
+        BookCopy copy = copy(book);
+        Loan loan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
+                borrower.profile().getReaderNo(), copy.getBarcode());
+        Reservation expiring = reservations.createForReader(owner.account().getId(), book.getId());
+        Reservation waiting = reservations.createForReader(next.account().getId(), book.getId());
+        returns.returnByLoanId(librarian.getId(), UserRole.LIBRARIAN, loan.getId());
+        Instant deadline = reservationRows.findById(expiring.getId()).orElseThrow().getHoldExpiresAt();
+        mutableClock.setInstant(deadline);
+
+        ReservationFulfillmentResult result = reservations.fulfillForReader(
+                librarian.getId(), UserRole.LIBRARIAN, expiring.getId(), owner.profile().getReaderNo());
+
+        assertTrue(result.expired());
+        Reservation expired = reservationRows.findById(expiring.getId()).orElseThrow();
+        Reservation ready = reservationRows.findById(waiting.getId()).orElseThrow();
+        assertEquals(ReservationStatus.EXPIRED, expired.getStatus());
+        assertEquals(deadline, expired.getExpiredAt());
+        assertEquals(ReservationStatus.READY, ready.getStatus());
+        assertEquals(copy.getId(), ready.getCopyId());
+        assertEquals(BookCopyStatus.HELD, copies.findById(copy.getId()).orElseThrow().getStatus());
+        assertEquals(0L, loans.countByReader_IdAndReturnedAtIsNull(owner.profile().getId()));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM audit_log WHERE action = 'RESERVATION_EXPIRED' " +
+                "AND target_type = 'RESERVATION' AND target_id = ?", Integer.class, expiring.getId()));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM audit_log WHERE action = 'RESERVATION_READY' " +
+                "AND target_type = 'RESERVATION' AND target_id = ?", Integer.class, waiting.getId()));
+        mvc.perform(get("/reader/reservations").session(login(owner.account())))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("已过期")));
+        assertThrows(IllegalArgumentException.class,
+                () -> reservations.cancelForReader(owner.account().getId(), expiring.getId()));
+    }
+
+    @Test
+    void scheduledExpiryAfterDeadlineIsIdempotentWithAnEmptyQueue() {
+        ReaderFixture owner = reader();
+        ReaderFixture borrower = reader();
+        Book book = book("无人排队的到期保留");
+        BookCopy copy = copy(book);
+        Loan loan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
+                borrower.profile().getReaderNo(), copy.getBarcode());
+        Reservation reservation = reservations.createForReader(owner.account().getId(), book.getId());
+        returns.returnByLoanId(librarian.getId(), UserRole.LIBRARIAN, loan.getId());
+        Instant afterDeadline = reservationRows.findById(reservation.getId()).orElseThrow()
+                .getHoldExpiresAt().plusNanos(1_000);
+        mutableClock.setInstant(afterDeadline);
+
+        expiryScheduler.expireDueReservations();
+        expiryScheduler.expireDueReservations();
+        Reservation expired = reservationRows.findById(reservation.getId()).orElseThrow();
+        assertEquals(ReservationStatus.EXPIRED, expired.getStatus());
+        assertEquals(afterDeadline, expired.getExpiredAt());
+        assertEquals(BookCopyStatus.AVAILABLE, copies.findById(copy.getId()).orElseThrow().getStatus());
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM audit_log WHERE action = 'RESERVATION_EXPIRED' " +
+                "AND target_type = 'RESERVATION' AND target_id = ?", Integer.class, reservation.getId()));
+    }
+
+    @Test
+    void expiryAndCancellationRaceReleasesTheCopyOnlyOnce() throws Exception {
+        ReaderFixture owner = reader();
+        ReaderFixture next = reader();
+        ReaderFixture borrower = reader();
+        Book book = book("到期与取消竞争");
+        BookCopy copy = copy(book);
+        Loan loan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
+                borrower.profile().getReaderNo(), copy.getBarcode());
+        Reservation expiring = reservations.createForReader(owner.account().getId(), book.getId());
+        Reservation waiting = reservations.createForReader(next.account().getId(), book.getId());
+        returns.returnByLoanId(librarian.getId(), UserRole.LIBRARIAN, loan.getId());
+        mutableClock.setInstant(reservationRows.findById(expiring.getId()).orElseThrow().getHoldExpiresAt());
+
+        raceAllowingAlreadyEnded(
+                () -> reservations.expireDueReservation(expiring.getId()),
+                () -> reservations.cancelForReader(owner.account().getId(), expiring.getId()));
+
+        Reservation first = reservationRows.findById(expiring.getId()).orElseThrow();
+        assertTrue(first.getStatus() == ReservationStatus.EXPIRED || first.getStatus() == ReservationStatus.CANCELLED);
+        assertEquals(ReservationStatus.READY, reservationRows.findById(waiting.getId()).orElseThrow().getStatus());
+        assertEquals(copy.getId(), reservationRows.findById(waiting.getId()).orElseThrow().getCopyId());
+        assertEquals(1L, jdbc.queryForObject("SELECT COUNT(*) FROM reservation WHERE status = 'READY' " +
+                "AND copy_id = ?", Long.class, copy.getId()));
+        assertEquals(BookCopyStatus.HELD, copies.findById(copy.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void expiryAndPickupRaceCannotCreateALoanAfterTheDeadline() throws Exception {
+        ReaderFixture owner = reader();
+        ReaderFixture next = reader();
+        ReaderFixture borrower = reader();
+        Book book = book("到期与取书竞争");
+        BookCopy copy = copy(book);
+        Loan loan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
+                borrower.profile().getReaderNo(), copy.getBarcode());
+        Reservation expiring = reservations.createForReader(owner.account().getId(), book.getId());
+        Reservation waiting = reservations.createForReader(next.account().getId(), book.getId());
+        returns.returnByLoanId(librarian.getId(), UserRole.LIBRARIAN, loan.getId());
+        mutableClock.setInstant(reservationRows.findById(expiring.getId()).orElseThrow().getHoldExpiresAt());
+
+        raceAllowingAlreadyEnded(
+                () -> reservations.expireDueReservation(expiring.getId()),
+                () -> reservations.fulfillForReader(librarian.getId(), UserRole.LIBRARIAN,
+                        expiring.getId(), owner.profile().getReaderNo()));
+
+        assertEquals(ReservationStatus.EXPIRED, reservationRows.findById(expiring.getId()).orElseThrow().getStatus());
+        assertEquals(ReservationStatus.READY, reservationRows.findById(waiting.getId()).orElseThrow().getStatus());
+        assertEquals(0L, loans.countByReader_IdAndReturnedAtIsNull(owner.profile().getId()));
+        assertEquals(BookCopyStatus.HELD, copies.findById(copy.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void expiryAndReturnRaceLeaveDistinctCopyStatesAndOneNextHold() throws Exception {
+        ReaderFixture owner = reader();
+        ReaderFixture next = reader();
+        ReaderFixture firstBorrower = reader();
+        ReaderFixture secondBorrower = reader();
+        Book book = book("到期与归还竞争");
+        BookCopy expiringCopy = copy(book);
+        BookCopy returningCopy = copy(book);
+        Loan expiringLoan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
+                firstBorrower.profile().getReaderNo(), expiringCopy.getBarcode());
+        Loan returningLoan = checkout.checkout(secondLibrarian.getId(), UserRole.LIBRARIAN,
+                secondBorrower.profile().getReaderNo(), returningCopy.getBarcode());
+        Reservation expiring = reservations.createForReader(owner.account().getId(), book.getId());
+        Reservation waiting = reservations.createForReader(next.account().getId(), book.getId());
+        returns.returnByLoanId(librarian.getId(), UserRole.LIBRARIAN, expiringLoan.getId());
+        mutableClock.setInstant(reservationRows.findById(expiring.getId()).orElseThrow().getHoldExpiresAt());
+
+        race(
+                () -> reservations.expireDueReservation(expiring.getId()),
+                () -> returns.returnByLoanId(secondLibrarian.getId(), UserRole.LIBRARIAN, returningLoan.getId()));
+
+        assertEquals(ReservationStatus.EXPIRED, reservationRows.findById(expiring.getId()).orElseThrow().getStatus());
+        Reservation ready = reservationRows.findById(waiting.getId()).orElseThrow();
+        assertEquals(ReservationStatus.READY, ready.getStatus());
+        assertTrue(ready.getCopyId().equals(expiringCopy.getId()) || ready.getCopyId().equals(returningCopy.getId()));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM book_copy WHERE book_id = ? AND status = 'HELD'",
+                Integer.class, book.getId()));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM book_copy WHERE book_id = ? AND status = 'AVAILABLE'",
+                Integer.class, book.getId()));
+    }
+
+    @Test
+    void expiryAndReaderDisableRaceReallocateToTheNextEnabledReader() throws Exception {
+        ReaderFixture owner = reader();
+        ReaderFixture next = reader();
+        ReaderFixture borrower = reader();
+        Book book = book("到期与停用竞争");
+        BookCopy copy = copy(book);
+        Loan loan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
+                borrower.profile().getReaderNo(), copy.getBarcode());
+        Reservation expiring = reservations.createForReader(owner.account().getId(), book.getId());
+        Reservation waiting = reservations.createForReader(next.account().getId(), book.getId());
+        returns.returnByLoanId(librarian.getId(), UserRole.LIBRARIAN, loan.getId());
+        mutableClock.setInstant(reservationRows.findById(expiring.getId()).orElseThrow().getHoldExpiresAt());
+
+        race(
+                () -> reservations.expireDueReservation(expiring.getId()),
+                () -> accounts.disableReader(UserRole.ADMIN, owner.account().getId()));
+
+        Reservation first = reservationRows.findById(expiring.getId()).orElseThrow();
+        assertTrue(first.getStatus() == ReservationStatus.EXPIRED || first.getStatus() == ReservationStatus.CANCELLED);
+        assertEquals(ReservationStatus.READY, reservationRows.findById(waiting.getId()).orElseThrow().getStatus());
+        assertEquals(copy.getId(), reservationRows.findById(waiting.getId()).orElseThrow().getCopyId());
+        assertEquals(BookCopyStatus.HELD, copies.findById(copy.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void expiredReservationNoLongerBlocksRenewal() {
+        ReaderFixture borrower = reader();
+        ReaderFixture secondBorrower = reader();
+        ReaderFixture queued = reader();
+        Book book = book("过期后续借");
+        BookCopy borrowedCopy = copy(book);
+        BookCopy returningCopy = copy(book);
+        Loan targetLoan = checkout.checkout(librarian.getId(), UserRole.LIBRARIAN,
+                borrower.profile().getReaderNo(), borrowedCopy.getBarcode());
+        Loan returningLoan = checkout.checkout(secondLibrarian.getId(), UserRole.LIBRARIAN,
+                secondBorrower.profile().getReaderNo(), returningCopy.getBarcode());
+        Reservation reservation = reservations.createForReader(queued.account().getId(), book.getId());
+        returns.returnByLoanId(secondLibrarian.getId(), UserRole.LIBRARIAN, returningLoan.getId());
+        assertThrows(IllegalArgumentException.class,
+                () -> renewals.renewForReader(borrower.account().getId(), targetLoan.getId()));
+
+        Instant afterDeadline = reservationRows.findById(reservation.getId()).orElseThrow()
+                .getHoldExpiresAt().plusNanos(1_000);
+        mutableClock.setInstant(afterDeadline);
+        expiryScheduler.expireDueReservations();
+
+        assertEquals(ReservationStatus.EXPIRED, reservationRows.findById(reservation.getId()).orElseThrow().getStatus());
+        assertEquals(1, renewals.renewForReader(borrower.account().getId(), targetLoan.getId()).getRenewCount());
     }
 
     @Test
@@ -450,6 +684,37 @@ class ReservationAllocationTest {
         }
     }
 
+    private void raceAllowingAlreadyEnded(Runnable first, Runnable second) throws Exception {
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Callable<Void> firstCall = expectedAlreadyEnded(first, ready, start);
+            Callable<Void> secondCall = expectedAlreadyEnded(second, ready, start);
+            Future<Void> firstResult = executor.submit(firstCall);
+            Future<Void> secondResult = executor.submit(secondCall);
+            assertTrue(ready.await(10, TimeUnit.SECONDS));
+            start.countDown();
+            firstResult.get(20, TimeUnit.SECONDS);
+            secondResult.get(20, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private Callable<Void> expectedAlreadyEnded(Runnable action, CountDownLatch ready, CountDownLatch start) {
+        return () -> {
+            ready.countDown();
+            start.await();
+            try {
+                action.run();
+            } catch (IllegalArgumentException expected) {
+                // Expiry or another request may have committed the terminal state first.
+            }
+            return null;
+        };
+    }
+
     private ReaderFixture reader() {
         String suffix = token();
         AppUser user = accounts.createReader(UserRole.ADMIN, "x03_reader_" + suffix, PASSWORD,
@@ -496,4 +761,40 @@ class ReservationAllocationTest {
     }
 
     private record ReaderFixture(AppUser account, ReaderProfile profile) { }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class MutableClockConfiguration {
+        @Bean
+        @Primary
+        MutableClock reservationTestClock() {
+            return new MutableClock(Instant.now().truncatedTo(ChronoUnit.MICROS));
+        }
+    }
+
+    static class MutableClock extends Clock {
+        private final AtomicReference<Instant> instant;
+
+        MutableClock(Instant initialInstant) {
+            this.instant = new AtomicReference<>(initialInstant);
+        }
+
+        void setInstant(Instant value) {
+            instant.set(value);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneId.of("UTC");
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return Clock.fixed(instant(), zone);
+        }
+
+        @Override
+        public Instant instant() {
+            return instant.get();
+        }
+    }
 }

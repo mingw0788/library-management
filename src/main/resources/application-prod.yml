@@ -4,6 +4,10 @@ spring:
     username: ${LIBRARY_PROD_DB_USERNAME}
     password: ${LIBRARY_PROD_DB_PASSWORD}
 
+library:
+  reservations:
+    enabled: true
+
 server:
   forward-headers-strategy: framework
   servlet:

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-@Profile("test")
+@Profile({"dev", "test", "prod"})
 @ConditionalOnProperty(prefix = "library.reservations", name = "enabled", havingValue = "true")
 @RequestMapping("/staff/reservations")
 public class StaffReservationController {
@@ -43,8 +43,12 @@ public class StaffReservationController {
                           RedirectAttributes redirect) {
         CurrentIdentity identity = currentIdentity.requireCurrentIdentity();
         try {
-            reservations.fulfillForReader(identity.userId(), identity.role(), reservationId, readerNo);
-            redirect.addFlashAttribute("notice", "已为读者办理取书，借阅记录和预约状态已一起更新。");
+            var result = reservations.fulfillForReader(identity.userId(), identity.role(), reservationId, readerNo);
+            if (result.expired()) {
+                redirect.addFlashAttribute("error", "该预约已到期，保留副本已释放并按队列重新分配。");
+            } else {
+                redirect.addFlashAttribute("notice", "已为读者办理取书，借阅记录和预约状态已一起更新。");
+            }
         } catch (IllegalArgumentException exception) {
             redirect.addFlashAttribute("error", exception.getMessage());
         } catch (DataIntegrityViolationException exception) {

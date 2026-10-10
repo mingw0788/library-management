@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-@Profile("test")
+@Profile({"dev", "test", "prod"})
 @ConditionalOnProperty(prefix = "library.reservations", name = "enabled", havingValue = "true")
 @RequestMapping("/reader/reservations")
 public class ReservationController {

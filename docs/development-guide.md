@@ -9,13 +9,13 @@
 | `src/main/java/com/example/library/account` | 账号、读者档案、密码规则和首次管理员初始化 |
 | `src/main/java/com/example/library/catalog` | 分类、书目、实体副本、目录搜索及库存汇总 |
 | `src/main/java/com/example/library/loan` | 借还规则、借出/归还/续借事务和借阅查询 |
-| `src/main/java/com/example/library/reservation` | X02—X03 预约队列、72 小时分配、取书和测试 profile 服务 |
+| `src/main/java/com/example/library/reservation` | X02—X04 预约队列、72 小时分配、取书、到期释放和 profile 服务 |
 | `src/main/java/com/example/library/audit` | 关键业务操作审计 |
 | `src/main/java/com/example/library/security` | Spring Security、当前登录身份、角色和会话复核 |
 | `src/main/java/com/example/library/controller` | 网页路由、输入接收和页面模型；不应在这里复制业务规则 |
 | `src/main/java/com/example/library/dashboard`、`web` | 首页统计和表单反馈 |
 | `src/main/resources/templates`、`static` | Thymeleaf 页面及 CSS |
-| `src/main/resources/db/migration` | 只追加的 Flyway 版本迁移，当前为 V1—V11 |
+| `src/main/resources/db/migration` | 只追加的 Flyway 版本迁移，当前为 V1—V12 |
 | `src/main/resources/application*.yml` | 默认值与 dev/test/prod 环境连接配置 |
 | `src/test/java` | 页面、服务、权限、真实 MySQL、并发和性能验收 |
 | `scripts/set-local-db-env.ps1` | 从未提交的本机 JSON 安全载入 dev/test 连接环境变量 |
@@ -46,7 +46,7 @@ notepad .local\mysql-connection.json
 
 ### 在专用空库首次复现迁移
 
-自动测试配置固定使用 `library_test`，并包含该库名称的隔离断言。需要从空库复现初次迁移时，先由数据库管理员在本机 MySQL 创建一个全新的独立 schema 和只访问该 schema 的专用账号；不要删除或清空现有 `library_test`、`library_dev` 或恢复演练库。可用 prod profile 加外部配置指向这个一次性验收 schema，配置文件保存在被忽略的 `.local` 中，结构参考 `config/application-prod.example.yml`，只把 URL 的 schema 名改为验收库名。随后使用 prod 环境变量启动打包 JAR；Flyway 应从 V1 自动运行到 V11，Hibernate 再校验结构。检查后停止应用，并按本机数据库管理规则处理这个一次性 schema。T23 曾验证 V1—V8，X01 加入 V9，X02 加入 V10，X03 在现有 dev/test 库验证 V11 升级。
+自动测试配置固定使用 `library_test`，并包含该库名称的隔离断言。需要从空库复现初次迁移时，先由数据库管理员在本机 MySQL 创建一个全新的独立 schema 和只访问该 schema 的专用账号；不要删除或清空现有 `library_test`、`library_dev` 或恢复演练库。可用 prod profile 加外部配置指向这个一次性验收 schema，配置文件保存在被忽略的 `.local` 中，结构参考 `config/application-prod.example.yml`，只把 URL 的 schema 名改为验收库名。随后使用 prod 环境变量启动打包 JAR；Flyway 应从 V1 自动运行到 V12，Hibernate 再校验结构。检查后停止应用，并按本机数据库管理规则处理这个一次性 schema。T23 曾验证 V1—V8，X01 加入 V9，X02 加入 V10，X03 加入 V11，X04 在现有 dev/test 库验证 V12 升级。
 
 ## 本地启动和管理员初始化
 
@@ -66,7 +66,7 @@ java -jar target\library-management-0.0.1-SNAPSHOT.jar --spring.profiles.active=
 
 首次管理员初始化默认关闭。只在新建的空验收库或确定尚无管理员的目标库上临时设置 `LIBRARY_INITIAL_ADMIN_ENABLED=true`，并通过受控的进程环境提供 `LIBRARY_INITIAL_ADMIN_USERNAME`、`LIBRARY_INITIAL_ADMIN_PASSWORD`、`LIBRARY_INITIAL_ADMIN_DISPLAY_NAME`。不要把密码写入仓库文件、命令历史或共享终端记录。启动日志只说明初始化成功或因已有管理员跳过，不打印密码。第一次登录须立即改密；随后停止应用、关闭初始化开关并清除全部初始化环境变量，再按普通 dev/prod 配置启动。已存在管理员时，初始化流程不会重设账号或密码。
 
-应用启动时 Flyway 会验证并应用尚未执行的迁移；Hibernate 使用 `validate` 核对结构，不会替代迁移或自动改表。当前结构版本为 V11。X02—X03 的预约功能默认关闭；`application.yml` 中 `library.reservations.enabled` 为 `false`，只有 `application-test.yml` 将它打开，而且预约服务和控制器还受 `test` profile 限制。dev/prod 不会加载预约写服务、页面或路由。X03 已实现保留、取书和取消/禁用后重分配；截止时间的扫描和实时过期拒绝/释放留给 X04。已执行的迁移文件不可编辑、删除或用 `repair` 掩盖差异；结构变化要新建下一版本迁移，并按本计划验收。
+应用启动时 Flyway 会验证并应用尚未执行的迁移；Hibernate 使用 `validate` 核对结构，不会替代迁移或自动改表。当前结构版本为 V12。基础配置 `application.yml` 将预约关闭；test profile 用于验收，prod profile 在 X04 完整验收后已开启预约服务、页面和每分钟到期扫描。dev profile 仍继承关闭状态，预约路由和调度组件均不加载。取书请求也自行检查截止时间，到期时释放副本并继续 FIFO 分配，不依赖定时扫描。X04 已通过；本机没有部署生产环境。已执行的迁移文件不可编辑、删除或用 `repair` 掩盖差异；结构变化要新建下一版本迁移，并按本计划验收。
 
 ## 一次借出的请求和数据流
 
@@ -94,6 +94,6 @@ java -jar target\library-management-0.0.1-SNAPSHOT.jar --spring.profiles.active=
 | MySQL 1045 | 账号或密码认证失败；用数据库管理员工具核对受限应用账号。不要尝试覆盖其他账号密码或改用 root 启动应用。 |
 | Unknown database / access denied | 检查当前 profile 与对应 schema 权限；dev/test 脚本会校验目标库名。不要在别的业务库上运行迁移。 |
 | Flyway checksum mismatch | 已执行迁移文件与历史不一致；停止启动，检查 Git 差异和实际数据库。不要运行自动修复或手改历史记录。 |
-| Hibernate schema validation failed | 核对 Flyway 是否到 V11、当前 profile/schema 是否正确，以及迁移是否完整；不要关闭 `validate` 来掩盖结构不匹配。 |
+| Hibernate schema validation failed | 核对 Flyway 是否到 V12、当前 profile/schema 是否正确，以及迁移是否完整；不要关闭 `validate` 来掩盖结构不匹配。 |
 | 8080 被占用 | 检查占用程序；若需要，可仅本次运行传入 `--server.port=8081`。不要结束不相关进程。 |
 | Maven 下载失败 | Wrapper 和依赖首次需联网；确认网络可访问项目配置的 HTTPS 仓库镜像，再重试。不要为本项目修改全局 Maven、代理或固定依赖版本。 |

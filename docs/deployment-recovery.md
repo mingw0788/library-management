@@ -27,7 +27,7 @@
 
 生产 profile 显式将会话 Cookie 设为 `Secure`、`HttpOnly` 和 `SameSite=Lax`。TLS 在可信反向代理终止；代理必须清理客户端自行提交的 `Forwarded`/`X-Forwarded-*` 请求头，再写入自己的协议和主机信息。由于应用信任这些转发头，不能让外部客户端绕过代理直接访问应用端口。CSRF 防护保持开启。
 
-当前 Flyway 迁移包含 V11 预约保留结构。`library.reservations.enabled` 默认关闭，预约服务和页面仍只在 test profile 加载；dev/prod 不存在预约或取书路由。X03 的 FIFO 保留、72 小时截止、取书、取消/停用后重分配仍仅用于内部验证；到期扫描和请求时实时过期处理及扩展启用验收留给 X04。上线不会启用预约入口。
+当前 Flyway 迁移包含 V12 预约到期结构。`library.reservations.enabled` 在基础配置默认关闭，dev profile 继承关闭，test profile 用于真实数据库验收；X04 完整验收通过后，prod profile 已配置开启预约和每分钟到期扫描。部署仍未执行，生产 schema、备份与恢复、HTTPS 代理和上线检查尚未验证；不要把本地配置启用视为已经发布。
 
 应用请求日志写到标准输出，安全过滤器只记录方法、路径、状态码或异常类型，不记录密码、Cookie、令牌、查询参数或异常消息。部署平台应限制日志读取权限、设置轮转与保留期；不要打开包含业务参数的 SQL/请求体调试日志，也不要将秘密放入命令历史或普通日志。
 

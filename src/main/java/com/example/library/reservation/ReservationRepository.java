@@ -17,7 +17,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     Optional<Reservation> findByIdForUpdate(@Param("id") Long id);
 
     @Query("select new com.example.library.reservation.ReservationReference(r.id, r.readerId, p.userId, " +
-            "r.bookId, r.copyId, r.status) from Reservation r join ReaderProfile p on p.id = r.readerId " +
+            "r.bookId, r.copyId, r.status, r.holdExpiresAt) from Reservation r join ReaderProfile p on p.id = r.readerId " +
             "where r.id = :id and r.status in :statuses")
     Optional<ReservationReference> findActiveReferenceById(@Param("id") Long id,
                                                             @Param("statuses") List<ReservationStatus> statuses);
@@ -41,7 +41,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                                          @Param("statuses") List<ReservationStatus> statuses);
 
     @Query("select new com.example.library.reservation.ReservationReference(r.id, r.readerId, p.userId, " +
-            "r.bookId, r.copyId, r.status) from Reservation r join ReaderProfile p on p.id = r.readerId " +
+            "r.bookId, r.copyId, r.status, r.holdExpiresAt) from Reservation r join ReaderProfile p on p.id = r.readerId " +
             "where r.readerId = :readerId and r.bookId = :bookId and r.status in :statuses order by r.id asc")
     List<ReservationReference> findActiveReferencesByReaderAndBook(@Param("readerId") Long readerId,
                                                                      @Param("bookId") Long bookId,
@@ -63,6 +63,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "join AppUser u on u.id = p.userId join Book b on b.id = r.bookId " +
             "where r.status = :status order by r.holdExpiresAt asc, r.id asc")
     List<ReservationStaffItem> findReadyRowsForStaff(@Param("status") ReservationStatus status);
+
+    @Query("select r.id from Reservation r where r.status = :status and r.holdExpiresAt <= :now " +
+            "order by r.bookId asc, r.id asc")
+    List<Long> findExpiredReadyReservationIds(@Param("status") ReservationStatus status,
+                                               @Param("now") Instant now);
 
     boolean existsByBookIdAndStatusIn(Long bookId, List<ReservationStatus> statuses);
 

@@ -2,14 +2,14 @@
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>预约取书（测试环境）· 图书管理系统</title>
+    <title>预约取书· 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
 <body><main class="page-shell">
     <section class="hero">
-        <p class="eyebrow">测试环境内部功能</p>
+        <p class="eyebrow">工作人员服务</p>
         <h1 class="hero-title">到书保留与取书</h1>
-        <p class="hero-description">只显示已分配副本的预约。办理时请核对读者证号；读者资格会在提交时重新检查。到期自动释放与过期拦截留给 X04。</p>
+        <p class="hero-description">只显示仍在保留期内的预约。办理时请核对读者证号；系统会重新检查读者资格和保留截止时间。</p>
         <p th:if="${notice}" th:text="${notice}" role="status"></p>
         <p th:if="${error}" th:text="${error}" role="alert"></p>
         <p th:if="${#lists.isEmpty(reservations)}">目前没有等待取书的预约。</p>

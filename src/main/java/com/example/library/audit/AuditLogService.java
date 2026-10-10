@@ -65,6 +65,17 @@ public class AuditLogService {
         save(null, "SYSTEM", "SYSTEM", action, targetType, targetId, summary);
     }
 
+    @Transactional
+    public void recordCurrentOrSystem(String action, String targetType, Long targetId, String summary) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+                && authentication.getPrincipal() instanceof AppUserPrincipal) {
+            recordCurrent((UserRole) null, action, targetType, targetId, summary);
+        } else {
+            recordSystem(action, targetType, targetId, summary);
+        }
+    }
+
     @Transactional(readOnly = true)
     public Page<AuditLog> search(UserRole actorRole, int requestedPage) {
         if (actorRole != UserRole.ADMIN) throw new AccessDeniedException("仅管理员可以查看操作审计");

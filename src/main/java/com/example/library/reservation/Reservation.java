@@ -47,6 +47,9 @@ public class Reservation {
     @Column(name = "fulfilled_at")
     private Instant fulfilledAt;
 
+    @Column(name = "expired_at")
+    private Instant expiredAt;
+
     @Version
     @Column(nullable = false)
     private long version;
@@ -82,11 +85,20 @@ public class Reservation {
 
     public void fulfill(Instant at) {
         if (status != ReservationStatus.READY || copyId == null || holdExpiresAt == null
-                || at == null || at.isBefore(createdAt)) {
+                || at == null || at.isBefore(createdAt) || !at.isBefore(holdExpiresAt)) {
             throw new IllegalArgumentException("该预约当前不能办理取书");
         }
         status = ReservationStatus.FULFILLED;
         fulfilledAt = at;
+    }
+
+    public void expire(Instant at) {
+        if (status != ReservationStatus.READY || copyId == null || holdExpiresAt == null
+                || at == null || at.isBefore(holdExpiresAt)) {
+            throw new IllegalArgumentException("该预约尚未到期，不能结束保留");
+        }
+        status = ReservationStatus.EXPIRED;
+        expiredAt = at;
     }
 
     @PrePersist
@@ -96,17 +108,26 @@ public class Reservation {
         boolean ready = status == ReservationStatus.READY;
         boolean fulfilled = status == ReservationStatus.FULFILLED;
         boolean cancelled = status == ReservationStatus.CANCELLED;
+        boolean expired = status == ReservationStatus.EXPIRED;
         boolean validAssignment = (pending && copyId == null && holdExpiresAt == null && fulfilledAt == null)
-                || ((ready || fulfilled) && copyId != null && copyId > 0 && holdExpiresAt != null
-                && (ready == (fulfilledAt == null)))
+                && expiredAt == null
+                || (ready && copyId != null && copyId > 0 && holdExpiresAt != null
+                && fulfilledAt == null && expiredAt == null)
+                || (fulfilled && copyId != null && copyId > 0 && holdExpiresAt != null
+                && fulfilledAt != null && expiredAt == null)
+                || (expired && copyId != null && copyId > 0 && holdExpiresAt != null
+                && fulfilledAt == null && expiredAt != null)
                 || (cancelled && fulfilledAt == null
+                && expiredAt == null
                 && ((copyId == null && holdExpiresAt == null) || (copyId != null && holdExpiresAt != null)));
         if (readerId == null || readerId < 1 || bookId == null || bookId < 1 || status == null
-                || createdAt == null || ((pending || ready || fulfilled) != (cancelledAt == null))
+                || createdAt == null || ((pending || ready || fulfilled || expired) != (cancelledAt == null))
                 || (cancelled && cancelledAt == null) || !validAssignment
                 || (cancelledAt != null && cancelledAt.isBefore(createdAt))
                 || (holdExpiresAt != null && holdExpiresAt.isBefore(createdAt))
-                || (fulfilledAt != null && fulfilledAt.isBefore(createdAt)) || version < 0) {
+                || (fulfilledAt != null && (fulfilledAt.isBefore(createdAt) || !fulfilledAt.isBefore(holdExpiresAt)))
+                || (expiredAt != null && (expiredAt.isBefore(createdAt) || expiredAt.isBefore(holdExpiresAt)))
+                || version < 0) {
             throw new IllegalStateException("预约记录不符合约束");
         }
     }
@@ -120,5 +141,6 @@ public class Reservation {
     public Instant getCancelledAt() { return cancelledAt; }
     public Instant getHoldExpiresAt() { return holdExpiresAt; }
     public Instant getFulfilledAt() { return fulfilledAt; }
+    public Instant getExpiredAt() { return expiredAt; }
     public long getVersion() { return version; }
 }

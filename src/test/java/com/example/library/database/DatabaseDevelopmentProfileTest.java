@@ -39,7 +39,7 @@ class DatabaseDevelopmentProfileTest {
         assertEquals("+00:00", jdbcTemplate.queryForObject("SELECT @@session.time_zone", String.class));
         assertEquals(1, jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM system_guard WHERE guard_key = 'ACTIVE_ADMIN_SET'", Integer.class));
-        assertEquals("11", jdbcTemplate.queryForObject(
+        assertEquals("12", jdbcTemplate.queryForObject(
                 "SELECT version FROM flyway_schema_history WHERE success = 1 " +
                         "ORDER BY installed_rank DESC LIMIT 1", String.class));
         assertEquals(1, jdbcTemplate.queryForObject(
@@ -52,9 +52,13 @@ class DatabaseDevelopmentProfileTest {
 
     @Test
     void reservationFeatureIsUnavailableInDevelopmentProfileByDefault() throws Exception {
+        assertFalse(applicationContext.getEnvironment()
+                .getProperty("library.reservations.enabled", Boolean.class, false));
         assertFalse(applicationContext.containsBean("reservationService"));
         assertFalse(applicationContext.containsBean("reservationController"));
         assertFalse(applicationContext.containsBean("staffReservationController"));
+        assertFalse(applicationContext.containsBean("reservationExpiryScheduler"));
+        assertFalse(applicationContext.containsBean("reservationSchedulingConfiguration"));
 
         mvc.perform(get("/reader/reservations").with(user("test-reader").roles("READER")))
                 .andExpect(status().isNotFound());

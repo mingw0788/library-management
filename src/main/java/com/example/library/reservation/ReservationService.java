@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -33,7 +34,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 @Service
-@Profile("test")
+@Profile({"dev", "test", "prod"})
 @ConditionalOnProperty(prefix = "library.reservations", name = "enabled", havingValue = "true")
 public class ReservationService {
 
@@ -107,7 +108,7 @@ public class ReservationService {
         }
 
         Reservation reservation = reservations.saveAndFlush(
-                new Reservation(reader.getId(), bookId, circulationClock.instant()));
+                new Reservation(reader.getId(), bookId, reservationTime()));
         auditLogs.recordCurrent(account.getId(), UserRole.READER, "RESERVATION_CREATED", "RESERVATION",
                 reservation.getId(), "提交图书预约");
         return reservation;
@@ -161,7 +162,7 @@ public class ReservationService {
             throw new IllegalArgumentException("预约状态已变化，请刷新后重试");
         }
 
-        reservation.cancel(circulationClock.instant());
+        reservation.cancel(reservationTime());
         reservations.saveAndFlush(reservation);
         auditLogs.recordCurrent(account.getId(), UserRole.READER, "RESERVATION_CANCELLED", "RESERVATION",
                 reservation.getId(), "取消图书预约");
@@ -189,7 +190,7 @@ public class ReservationService {
                 idsToLock.stream().distinct().sorted().toList());
         Map<Long, Reservation> byId = new HashMap<>();
         lockedQueue.forEach(row -> byId.put(row.getId(), row));
-        Instant now = circulationClock.instant();
+        Instant now = reservationTime();
         for (ReservationQueueCandidate candidate : queue) {
             if (!idsToLock.contains(candidate.reservationId())) break;
             Reservation row = byId.get(candidate.reservationId());
@@ -240,7 +241,7 @@ public class ReservationService {
             for (Reservation row : lockedQueue) {
                 if (row.getReaderId().equals(readerProfileId)
                         && (row.getStatus() == ReservationStatus.PENDING || row.getStatus() == ReservationStatus.READY)) {
-                    row.cancel(circulationClock.instant());
+                    row.cancel(reservationTime());
                     auditLogs.recordCurrent(actorRole, "RESERVATION_CANCELLED", "RESERVATION", row.getId(),
                             "停用读者账号并取消预约");
                 }
@@ -253,7 +254,29 @@ public class ReservationService {
     }
 
     @Transactional
-    public Loan fulfillForReader(Long operatorId, UserRole actorRole, Long reservationId, String readerNo) {
+    public boolean expireDueReservation(Long reservationId) {
+        if (reservationId == null || reservationId < 1) throw new IllegalArgumentException("预约编号无效");
+        ReservationReference observed = reservations.findActiveReferenceById(reservationId,
+                List.of(ReservationStatus.READY)).orElse(null);
+        if (observed == null || observed.copyId() == null || observed.holdExpiresAt() == null) return false;
+
+        Book book = books.findByIdForUpdate(observed.bookId())
+                .orElseThrow(() -> new IllegalArgumentException("预约书目不存在"));
+        ReservationReference current = reservations.findActiveReferenceById(reservationId,
+                List.of(ReservationStatus.READY)).orElse(null);
+        if (current == null || !current.bookId().equals(book.getId())
+                || !observed.copyId().equals(current.copyId())) return false;
+        BookCopy copy = copies.findByIdForUpdate(current.copyId())
+                .orElseThrow(() -> new IllegalArgumentException("预约保留的副本不存在"));
+        if (!copy.getBookId().equals(book.getId()) || copy.getStatus() != BookCopyStatus.HELD) {
+            throw new IllegalArgumentException("预约与保留副本状态不一致");
+        }
+        return expireReadyReservationUnderLocks(current, copy);
+    }
+
+    @Transactional
+    public ReservationFulfillmentResult fulfillForReader(Long operatorId, UserRole actorRole,
+                                                          Long reservationId, String readerNo) {
         requireStaff(actorRole);
         if (operatorId == null) throw new IllegalArgumentException("办理人账号无效");
         if (reservationId == null || reservationId < 1) throw new IllegalArgumentException("预约编号无效");
@@ -296,8 +319,17 @@ public class ReservationService {
             throw new IllegalArgumentException("预约与保留副本状态不一致");
         }
 
+        Instant borrowedAt = reservationTime();
+        if (!borrowedAt.isBefore(current.holdExpiresAt())) {
+            if (expireReadyReservationUnderLocks(current, copy)) return ReservationFulfillmentResult.expiredResult();
+            throw new IllegalArgumentException("预约状态已变化，请刷新页面后重试");
+        }
         assertReaderEligible(reader.getId(), book.getId());
-        Instant borrowedAt = circulationClock.instant();
+        borrowedAt = reservationTime();
+        if (!borrowedAt.isBefore(current.holdExpiresAt())) {
+            if (expireReadyReservationUnderLocks(current, copy)) return ReservationFulfillmentResult.expiredResult();
+            throw new IllegalArgumentException("预约状态已变化，请刷新页面后重试");
+        }
         Loan loan = loans.saveAndFlush(Loan.fromReservationPickup(reader, copy, borrowedAt,
                 loanRules.dueDateFor(borrowedAt), operator));
         copy.checkoutFromReservationHold();
@@ -316,7 +348,7 @@ public class ReservationService {
         auditLogs.recordCurrent(operatorId, actorRole, "LOAN_CHECKED_OUT", "LOAN", loan.getId(), "办理预约取书");
         auditLogs.recordCurrent(operatorId, actorRole, "RESERVATION_FULFILLED", "RESERVATION",
                 reservation.getId(), "预约取书完成");
-        return loan;
+        return ReservationFulfillmentResult.fulfilled(loan);
     }
 
     @Transactional(readOnly = true)
@@ -352,7 +384,7 @@ public class ReservationService {
         lockedActiveRows.forEach(row -> reservationById.put(row.getId(), row));
         List<BookCopy> copiesInOrder = availableCopies.stream()
                 .sorted(Comparator.comparing(BookCopy::getId)).toList();
-        Instant now = circulationClock.instant();
+        Instant now = reservationTime();
         for (BookCopy copy : copiesInOrder) {
             if (copy.getStatus() != BookCopyStatus.AVAILABLE) continue;
             for (ReservationQueueCandidate candidate : queue) {
@@ -360,18 +392,44 @@ public class ReservationService {
                 if (row == null || row.getStatus() != ReservationStatus.PENDING) continue;
                 if (candidate.readerStatus() != UserStatus.ACTIVE || candidate.readerRole() != UserRole.READER) {
                     row.cancel(now);
-                    auditLogs.recordCurrent(null, "RESERVATION_CANCELLED", "RESERVATION", row.getId(),
+                    auditLogs.recordCurrentOrSystem("RESERVATION_CANCELLED", "RESERVATION", row.getId(),
                             "跳过已停用读者的预约");
                     continue;
                 }
                 row.assignCopy(copy.getId(), now.plus(HOLD_DURATION));
                 copy.holdForReservation();
-                auditLogs.recordCurrent(null, "RESERVATION_READY", "RESERVATION", row.getId(), "到书保留72小时");
+                auditLogs.recordCurrentOrSystem("RESERVATION_READY", "RESERVATION", row.getId(), "到书保留72小时");
                 break;
             }
         }
         reservations.saveAllAndFlush(lockedActiveRows);
         copies.saveAllAndFlush(copiesInOrder);
+    }
+
+    /** Caller must hold the book and HELD copy rows, in that order. */
+    private boolean expireReadyReservationUnderLocks(ReservationReference reference, BookCopy copy) {
+        List<ReservationQueueCandidate> queue = reservations.findQueueCandidatesByBookId(
+                reference.bookId(), ReservationStatus.PENDING);
+        List<Long> idsToLock = new ArrayList<>();
+        idsToLock.add(reference.reservationId());
+        idsToLock.addAll(idsNeededForAllocation(queue, 1));
+        List<Reservation> lockedQueue = reservations.findAllByIdInForUpdateOrderByIdAsc(
+                idsToLock.stream().distinct().sorted().toList());
+        Reservation reservation = lockedQueue.stream()
+                .filter(row -> row.getId().equals(reference.reservationId()))
+                .findFirst().orElse(null);
+        if (reservation == null || reservation.getStatus() != ReservationStatus.READY
+                || !reservation.getBookId().equals(reference.bookId())
+                || !copy.getId().equals(reservation.getCopyId())) return false;
+
+        Instant now = reservationTime();
+        if (now.isBefore(reservation.getHoldExpiresAt())) return false;
+        reservation.expire(now);
+        copy.releaseReservationHold();
+        auditLogs.recordSystem("RESERVATION_EXPIRED", "RESERVATION", reservation.getId(),
+                "预约保留到期，释放副本并继续分配队列");
+        reallocateLockedCopies(reference.bookId(), List.of(copy), lockedQueue, queue);
+        return true;
     }
 
     private static List<Long> idsNeededForAllocation(List<ReservationQueueCandidate> queue, int copyCount) {
@@ -429,5 +487,9 @@ public class ReservationService {
 
     private static void requireStaff(UserRole role) {
         if (!isStaff(role)) throw new AccessDeniedException("仅管理员或馆员可以办理取书");
+    }
+
+    private Instant reservationTime() {
+        return circulationClock.instant().truncatedTo(ChronoUnit.MICROS);
     }
 }

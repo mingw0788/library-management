@@ -7,10 +7,9 @@
 </head>
 <body><main class="page-shell">
     <section class="hero">
-        <p class="eyebrow">测试环境内部功能</p>
+        <p class="eyebrow">读者服务</p>
         <h1 class="hero-title">预约队列</h1>
-        <p class="hero-description">本页面仅在启用预约测试配置时存在，不属于开发或生产环境入口。</p>
-        <p>本步会记录并显示 72 小时截止；到期自动释放和过期取书拦截留给 X04。</p>
+        <p class="hero-description">到书后系统为你保留 72 小时；请在截止时间前到馆办理取书。</p>
         <p th:if="${notice}" th:text="${notice}" role="status"></p>
         <p th:if="${error}" th:text="${error}" role="alert"></p>
         <form method="post" th:action="@{/reader/reservations}">
@@ -25,7 +24,7 @@
                 <tbody>
                 <tr th:each="reservation : ${reservations}">
                     <td th:text="${reservation.bookTitle}"></td>
-                    <td th:text="${reservation.status.name() == 'PENDING' ? '排队中' : (reservation.status.name() == 'READY' ? '已到书，等待取书' : (reservation.status.name() == 'FULFILLED' ? '已取书' : '已取消'))}"></td>
+                    <td th:text="${reservation.status.name() == 'PENDING' ? '排队中' : (reservation.status.name() == 'READY' ? '已到书，等待取书' : (reservation.status.name() == 'FULFILLED' ? '已取书' : (reservation.status.name() == 'EXPIRED' ? '已过期' : '已取消')))}"></td>
                     <td th:text="${reservation.queuePosition == null ? '—' : reservation.queuePosition}"></td>
                     <td><span th:text="${reservation.createdAt}"></span>
                         <span th:if="${reservation.holdExpiresAt != null}"> · 请于 <span th:text="${reservation.holdExpiresAt}"></span> 前取书</span></td>
@@ -34,7 +33,7 @@
                               th:action="@{/reader/reservations/{id}/cancel(id=${reservation.reservationId})}">
                             <button type="submit">取消预约</button>
                         </form>
-                        <span th:if="${reservation.status.name() == 'CANCELLED' or reservation.status.name() == 'FULFILLED'}">已结束</span>
+                        <span th:if="${reservation.status.name() == 'CANCELLED' or reservation.status.name() == 'FULFILLED' or reservation.status.name() == 'EXPIRED'}">已结束</span>
                     </td>
                 </tr>
                 </tbody>

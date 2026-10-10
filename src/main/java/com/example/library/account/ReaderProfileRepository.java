@@ -17,6 +17,9 @@ public interface ReaderProfileRepository extends JpaRepository<ReaderProfile, Lo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from ReaderProfile r where r.id = :id")
     Optional<ReaderProfile> findByIdForUpdate(@Param("id") Long id);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from ReaderProfile r where r.userId = :userId")
+    Optional<ReaderProfile> findByUserIdForUpdate(@Param("userId") Long userId);
     Optional<ReaderProfile> findByReaderNo(String readerNo);
     boolean existsByReaderNo(String readerNo);
     List<ReaderProfile> findAllByOrderByReaderNoAsc();

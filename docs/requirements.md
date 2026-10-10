@@ -1,6 +1,6 @@
 # 实施需求基线
 
-日期：2026-10-10；基础计划 T01—T24 已完成，用户已选择续借扩展 X01。需求主体取自原计划第 1—5 节，完整需求和实施进度见 [plan.md](plan.md) 与 [progress.md](progress.md)；逐项验收索引见 [acceptance-checklist.md](acceptance-checklist.md)。
+日期：2026-10-10；基础计划 T01—T24、X01 和 X02 均已完成。需求主体取自原计划第 1—5 节，完整需求和实施进度见 [plan.md](plan.md) 与 [progress.md](progress.md)；逐项验收索引见 [acceptance-checklist.md](acceptance-checklist.md)。
 
 ## 当前采用的决定
 
@@ -12,13 +12,13 @@
 - 三种 profile 与专用库隔离；本次用户选择 MySQL 8.0.44，替代原计划的 8.4 默认假设。完整版本/连接约定见 [environment.md](environment.md)。
 - 账号、馆藏、借阅有后端权限、数据归属、服务端校验和事务保护；密码不硬编码、不进入仓库；首次/重置后强制改密、旧会话失效。
 - 密码长度为 12—64 个 Unicode 字符，且 BCrypt 输入不超过 72 个 UTF-8 字节；初始/重置凭据通过当面或用户认可的私密方式交付。
-- 基础 T01—T24 和续借扩展 X01 均已验收；F15、B14 的实现与实测见 [X01 记录](progress.md#x01)。预约需求 F16、B15—B17、A14—A17 仍未选择。
+- 基础 T01—T24、续借 X01 和预约队列基础 X02 均已验收；F15/B14 见 [X01 记录](progress.md#x01)。X02 只在 test profile 启用，预约整体需求 F16 和规则 B15 仍部分完成；到书保留/分配/释放 X03—X04 尚未选择。
 - 不做支付、真实罚款、上传、短信邮件、采购、多分馆、电子书、微服务等范围外功能。
 - 每步报告结果并停止；只有获得用户明确允许，才开始下一编号。检查失败或缺少必要环境时不标记完成，不创建对应完成提交。
 
 ## 状态与追踪
 
-T01—T22 的环境、网页、数据库基线、账号/权限、馆藏与借还功能、安全、并发/性能验收及部署恢复演练均已完成；T23 补齐了操作和开发文档。需求编号、业务规则和角色矩阵沿用下文；逐项状态与实际测试见 [progress.md](progress.md) 和 [acceptance-checklist.md](acceptance-checklist.md)。A01—A17 的原始验收矩阵保留在 [plan.md](plan.md) 第 11.2 节；A14—A17 属于未选择扩展。
+T01—T24 的基础任务、X01 续借和 X02 测试专用预约队列基础均已完成；预约整体功能尚未开放。需求编号、业务规则和角色矩阵沿用下文；逐项状态与实际测试见 [progress.md](progress.md) 和 [acceptance-checklist.md](acceptance-checklist.md)。A01—A17 的原始验收矩阵保留在 [plan.md](plan.md) 第 11.2 节；A14 续借并发已验收，A15 部分验收，A16—A17 待 X03—X04。
 
 ---
 

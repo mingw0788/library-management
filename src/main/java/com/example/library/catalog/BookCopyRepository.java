@@ -21,6 +21,12 @@ public interface BookCopyRepository extends JpaRepository<BookCopy, Long> {
     @Query("select c from BookCopy c where c.id = :id")
     Optional<BookCopy> findByIdForUpdate(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from BookCopy c where c.book.id = :bookId and c.status <> :withdrawn " +
+            "order by c.id asc")
+    List<BookCopy> findCirculatingByBookIdForUpdateOrderByIdAsc(
+            @Param("bookId") Long bookId, @Param("withdrawn") BookCopyStatus withdrawn);
+
     @Query("select c from BookCopy c join fetch c.book where c.id = :id")
     Optional<BookCopy> findWithBookById(@Param("id") Long id);
 

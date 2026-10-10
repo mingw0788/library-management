@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>预约队列（测试环境）· 图书管理系统</title>
+    <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
+</head>
+<body><main class="page-shell">
+    <section class="hero">
+        <p class="eyebrow">测试环境内部功能</p>
+        <h1 class="hero-title">预约队列</h1>
+        <p class="hero-description">本页面仅在启用预约测试配置时存在，不属于开发或生产环境入口。</p>
+        <p th:if="${notice}" th:text="${notice}" role="status"></p>
+        <p th:if="${error}" th:text="${error}" role="alert"></p>
+        <form method="post" th:action="@{/reader/reservations}">
+            <p><label for="book-id">书目编号</label><br>
+                <input id="book-id" name="bookId" type="number" min="1" required>
+                <button type="submit">提交预约</button></p>
+        </form>
+        <p th:if="${#lists.isEmpty(reservations)}">目前没有预约记录。</p>
+        <div th:unless="${#lists.isEmpty(reservations)}" class="table-scroll">
+            <table>
+                <thead><tr><th>书目</th><th>状态</th><th>排队位置</th><th>提交时间</th><th>操作</th></tr></thead>
+                <tbody>
+                <tr th:each="reservation : ${reservations}">
+                    <td th:text="${reservation.bookTitle}"></td>
+                    <td th:text="${reservation.status.name() == 'PENDING' ? '排队中' : '已取消'}"></td>
+                    <td th:text="${reservation.queuePosition == null ? '—' : reservation.queuePosition}"></td>
+                    <td th:text="${reservation.createdAt}"></td>
+                    <td>
+                        <form th:if="${reservation.status.name() == 'PENDING'}" method="post"
+                              th:action="@{/reader/reservations/{id}/cancel(id=${reservation.reservationId})}">
+                            <button type="submit">取消预约</button>
+                        </form>
+                        <span th:if="${reservation.status.name() == 'CANCELLED'}">已结束</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <p><a th:href="@{/reader/loans}">返回我的借阅记录</a></p>
+    </section>
+</main></body>
+</html>

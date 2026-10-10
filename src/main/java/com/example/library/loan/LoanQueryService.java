@@ -25,13 +25,15 @@ public class LoanQueryService {
     private final ReaderProfileRepository readers;
     private final LoanViewMapper viewMapper;
     private final CirculationPolicy policy;
+    private final LoanRules rules;
 
     public LoanQueryService(LoanRepository loans, ReaderProfileRepository readers,
-                            LoanViewMapper viewMapper, CirculationPolicy policy) {
+                            LoanViewMapper viewMapper, CirculationPolicy policy, LoanRules rules) {
         this.loans = loans;
         this.readers = readers;
         this.viewMapper = viewMapper;
         this.policy = policy;
+        this.rules = rules;
     }
 
     @Transactional(readOnly = true)
@@ -47,11 +49,19 @@ public class LoanQueryService {
         if (authenticatedReaderUserId == null) throw new AccessDeniedException("需要有效的读者身份");
         ReaderProfile profile = readers.findByUserId(authenticatedReaderUserId)
                 .orElseThrow(() -> new AccessDeniedException("当前读者档案不存在"));
-        return search(profile.getId(), null, null, state, fromDate, toDate, page);
+        boolean readerHasOverdueLoan = loans.existsByReader_IdAndReturnedAtIsNullAndDueDateBefore(
+                profile.getId(), rules.today());
+        return search(profile.getId(), null, null, state, fromDate, toDate, page, true, readerHasOverdueLoan);
     }
 
     private Page<LoanListItem> search(Long readerProfileId, String readerQuery, String barcodeQuery,
                                       String state, LocalDate fromDate, LocalDate toDate, int page) {
+        return search(readerProfileId, readerQuery, barcodeQuery, state, fromDate, toDate, page, false, false);
+    }
+
+    private Page<LoanListItem> search(Long readerProfileId, String readerQuery, String barcodeQuery,
+                                      String state, LocalDate fromDate, LocalDate toDate, int page,
+                                      boolean readerRenewalEnabled, boolean readerHasOverdueLoan) {
         if (page < 0 || page > MAX_PAGE_INDEX) throw new IllegalArgumentException("页码超出允许范围");
         if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
             throw new IllegalArgumentException("借出日期起始值不能晚于结束值");
@@ -77,7 +87,8 @@ public class LoanQueryService {
             result = loans.search(readerProfileId, normalizedReader, normalizedBarcode,
                     selectedState.name(), fromInclusive, untilExclusive, lastPage);
         }
-        return result.map(viewMapper::toListItem);
+        boolean canOfferRenewal = readerRenewalEnabled && !readerHasOverdueLoan;
+        return result.map(row -> viewMapper.toListItem(row, canOfferRenewal));
     }
 
     private static String optionalQuery(String value, String label, int maximumLength) {

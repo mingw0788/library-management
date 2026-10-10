@@ -43,7 +43,7 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
 
     @Query(value = "select new com.example.library.loan.LoanViewRow(l.id, r.readerNo, readerAccount.displayName, " +
             "c.barcode, b.title, l.borrowedAt, l.dueDate, l.returnedAt, " +
-            "checkoutOperator.displayName, returnOperator.displayName) " +
+            "checkoutOperator.displayName, returnOperator.displayName, l.renewCount) " +
             "from Loan l join l.reader r join AppUser readerAccount on readerAccount.id = r.userId " +
             "join l.copy c join c.book b join l.checkoutOperator checkoutOperator " +
             "left join l.returnOperator returnOperator " +

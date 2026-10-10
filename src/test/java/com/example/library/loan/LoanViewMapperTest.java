@@ -40,6 +40,9 @@ class LoanViewMapperTest {
         assertTrue(late.returnedLate());
         assertTrue(monthBoundary.overdue());
         assertTrue(yearBoundary.overdue());
+        assertTrue(mapper("2026-10-09T15:59:59Z").toListItem(active, true).renewalAvailable());
+        assertFalse(mapper("2026-10-09T16:00:00Z").toListItem(active, true).renewalAvailable());
+        assertFalse(mapper("2026-10-09T15:59:59Z").toListItem(active, false).renewalAvailable());
     }
 
     private LoanViewMapper mapper(String now) {
@@ -50,6 +53,6 @@ class LoanViewMapperTest {
     private static LoanViewRow row(LocalDate dueDate, Instant returnedAt) {
         return new LoanViewRow(1L, "R-1", "测试读者", "BC-1", "测试图书",
                 Instant.parse("2026-10-01T03:00:00Z"), dueDate, returnedAt, "测试馆员",
-                returnedAt == null ? null : "测试馆员");
+                returnedAt == null ? null : "测试馆员", 0);
     }
 }

@@ -92,13 +92,21 @@ public class Loan {
         this.returnOperator = returnOperator;
     }
 
+    public void renew(int extensionDays) {
+        if (returnedAt != null) throw new IllegalArgumentException("已归还的借阅不能续借");
+        if (renewCount >= 1) throw new IllegalArgumentException("每条借阅记录最多续借一次");
+        if (extensionDays < 1) throw new IllegalArgumentException("续借天数必须大于 0");
+        this.dueDate = dueDate.plusDays(extensionDays);
+        this.renewCount = Math.addExact(renewCount, 1);
+    }
+
     @PrePersist
     @PreUpdate
     private void validate() {
         if (reader == null || copy == null || borrowedAt == null || dueDate == null || checkoutOperator == null
                 || (returnedAt == null) != (returnOperator == null)
                 || (returnedAt != null && returnedAt.isBefore(borrowedAt))
-                || renewCount != 0 || version < 0) {
+                || renewCount < 0 || renewCount > 1 || version < 0) {
             throw new IllegalStateException("借阅记录不符合约束");
         }
     }

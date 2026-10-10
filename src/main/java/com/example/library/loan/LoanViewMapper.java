@@ -20,12 +20,17 @@ public class LoanViewMapper {
     }
 
     public LoanListItem toListItem(LoanViewRow row) {
+        return toListItem(row, false);
+    }
+
+    public LoanListItem toListItem(LoanViewRow row, boolean renewalEnabledForReader) {
         Instant returnedAt = row.returnedAt();
         boolean overdue = returnedAt == null && rules.isOverdue(row.dueDate(), clock.instant());
         boolean returnedLate = returnedAt != null && rules.isReturnedLate(row.dueDate(), returnedAt);
         return new LoanListItem(row.loanId(), row.readerNo(), row.readerName(), row.barcode(), row.bookTitle(),
                 BUSINESS_TIME.format(row.borrowedAt().atZone(rules.policy().zoneId())), row.dueDate().toString(),
                 returnedAt == null ? null : BUSINESS_TIME.format(returnedAt.atZone(rules.policy().zoneId())),
-                row.checkoutOperatorName(), row.returnOperatorName(), overdue, returnedLate);
+                row.checkoutOperatorName(), row.returnOperatorName(), overdue, returnedLate, row.renewCount(),
+                renewalEnabledForReader && returnedAt == null && !overdue && row.renewCount() == 0);
     }
 }

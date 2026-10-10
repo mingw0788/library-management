@@ -5,5 +5,5 @@ import java.time.LocalDate;
 
 public record LoanViewRow(Long loanId, String readerNo, String readerName, String barcode, String bookTitle,
                           Instant borrowedAt, LocalDate dueDate, Instant returnedAt,
-                          String checkoutOperatorName, String returnOperatorName) {
+                          String checkoutOperatorName, String returnOperatorName, int renewCount) {
 }

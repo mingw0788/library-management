@@ -131,9 +131,14 @@ class LoanModelTest {
                         "checkout_operator_id, return_operator_id) VALUES (?, ?, ?, ?, ?, ?, NULL)",
                 reader.getId(), copy.getId(), Timestamp.from(borrowed), Date.valueOf(rules.dueDateFor(borrowed)),
                 Timestamp.from(borrowed.plusSeconds(60)), operator.getId()));
-        assertThrows(DataAccessException.class, () -> jdbc.update(
+        assertDoesNotThrow(() -> jdbc.update(
                 "INSERT INTO loan (reader_id, copy_id, borrowed_at, due_date, checkout_operator_id, renew_count) " +
                         "VALUES (?, ?, ?, ?, ?, 1)", reader.getId(), copy.getId(), Timestamp.from(borrowed),
+                Date.valueOf(rules.dueDateFor(borrowed)), operator.getId()));
+        BookCopy secondCopy = bookCopy("续借次数约束 " + token());
+        assertThrows(DataAccessException.class, () -> jdbc.update(
+                "INSERT INTO loan (reader_id, copy_id, borrowed_at, due_date, checkout_operator_id, renew_count) " +
+                        "VALUES (?, ?, ?, ?, ?, 2)", reader.getId(), secondCopy.getId(), Timestamp.from(borrowed),
                 Date.valueOf(rules.dueDateFor(borrowed)), operator.getId()));
     }
 

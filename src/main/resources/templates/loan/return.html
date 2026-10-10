@@ -5,7 +5,9 @@
     <title>办理归还 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">管理员与馆员</p>
         <h1 class="hero-title">办理归还</h1>

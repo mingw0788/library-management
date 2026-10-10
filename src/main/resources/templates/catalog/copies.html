@@ -5,18 +5,17 @@
     <title>实体副本 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">管理员与馆员</p><h1 class="hero-title">实体副本</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。每册实体书单独登记条码；新副本为可借状态，只能注销可借副本。</p>
         <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
         <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
-        <form method="get" th:action="@{/staff/copies}">
-            <label for="copy-query">按馆藏条码或书名查找</label><br>
-            <input id="copy-query" name="q" maxlength="100" th:value="${query}">
-            <button type="submit">查询</button><a th:href="@{/staff/copies}">显示全部</a>
-        </form>
+        <form th:replace="~{fragments/management-list :: filter('按馆藏条码或书名查找')}"></form>
         <form method="post" th:action="@{/staff/copies}">
+                <th:block th:replace="~{fragments/management-list :: returnFilters}"></th:block>
             <h2 class="card-title">登记一册新副本</h2>
             <p><label for="copy-book">书目</label><br><select id="copy-book" name="bookId" required>
                 <option value="">请选择有效书目</option>
@@ -30,6 +29,7 @@
     </section>
     <section class="info-card">
         <h2 class="card-title">副本清单</h2>
+        <nav th:replace="~{fragments/management-list :: pagination}"></nav>
         <p th:if="${#lists.isEmpty(copies)}">没有匹配的副本。</p>
         <article th:each="copy : ${copies}" class="reader-row">
             <p><strong th:text="${copy.book.title}"></strong> · 条码 <span th:text="${copy.barcode}"></span> · 状态 <span th:text="${copy.status.name() == 'AVAILABLE' ? '可借' : (copy.status.name() == 'ON_LOAN' ? '借出中' : (copy.status.name() == 'HELD' ? '预约保留' : '已注销'))}"></span></p>
@@ -38,11 +38,13 @@
                 <p>该书目数量：可借 <span th:text="${inventory.available}"></span> · 借出 <span th:text="${inventory.onLoan}"></span> · 预约保留 <span th:text="${inventory.held}"></span> · 已注销 <span th:text="${inventory.withdrawn}"></span> · 合计 <span th:text="${inventory.total()}"></span></p>
             </div>
             <form method="post" th:if="${copy.status.name() == 'AVAILABLE'}" th:action="@{/staff/copies/{id}/withdraw(id=${copy.id})}">
+                <th:block th:replace="~{fragments/management-list :: returnFilters}"></th:block>
                 <button type="submit">注销此副本</button>
             </form>
             <p th:if="${copy.status.name() == 'WITHDRAWN'}">副本已注销，不会计入可借数量。</p>
             <p th:if="${copy.status.name() == 'HELD'}">该副本已为预约读者保留，不能被其他借出操作取走。</p>
         </article>
+        <nav th:replace="~{fragments/management-list :: pagination}"></nav>
         <p><a th:href="@{/staff/books}">返回书目管理</a>　<a th:href="@{/staff/loans/checkout}">办理借出</a>　<a th:href="@{/staff/loans/return}">办理归还</a>　<a th:href="@{/staff}">返回工作人员工作区</a></p>
     </section>
 </main></body></html>

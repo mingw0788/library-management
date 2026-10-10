@@ -259,7 +259,8 @@ class LoanReturnTest {
                 .andExpect(flash().attribute("error", containsString("只填写一个")));
         mvc.perform(post("/staff/loans/return").with(csrf()).session(staffSession)
                         .param("barcode", copy.getBarcode()))
-                .andExpect(status().is3xxRedirection()).andExpect(flash().attribute("notice", containsString("已恢复")));
+                .andExpect(status().is3xxRedirection()).andExpect(flash().attribute("notice", containsString("副本状态已更新")))
+                .andExpect(flash().attribute("notice", containsString("预约读者保留")));
 
         MockHttpSession readerSession = login(reader.getUserId());
         mvc.perform(get("/staff/loans/return").session(readerSession)).andExpect(status().isForbidden());

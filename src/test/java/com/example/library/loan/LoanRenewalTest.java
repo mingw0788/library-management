@@ -210,6 +210,21 @@ class LoanRenewalTest {
     }
 
     @Test
+    void renewalPreservesReaderListContextOnSuccessAndRejectedRetry() throws Exception {
+        Loan loan = loanFor(reader);
+        MockHttpSession session = login(reader.getUserId());
+        for (int attempt = 0; attempt < 2; attempt++) {
+            var result = mvc.perform(post("/reader/loans/{id}/renew", loan.getId()).with(csrf()).session(session)
+                            .param("listState", "ALL").param("listPage", "2")
+                            .param("listFromDate", "2026-01-01").param("returnUrl", "https://example.com"))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("/reader/loans?state=ALL&page=2&fromDate=2026-01-01"));
+            result.andExpect(flash().attributeExists(attempt == 0 ? "notice" : "error"));
+        }
+        assertEquals(1, jdbc.queryForObject("SELECT renew_count FROM loan WHERE id = ?", Integer.class, loan.getId()));
+    }
+
+    @Test
     void auditFailureRollsBackTheDueDateAndRenewCount() throws Exception {
         Loan loan = loanFor(reader);
         MockHttpSession readerSession = login(reader.getUserId());

@@ -1,12 +1,16 @@
 package com.example.library.controller;
 
 import com.example.library.account.AccountService;
-import com.example.library.account.AppUserRepository;
-import com.example.library.account.ReaderProfile;
 import com.example.library.account.UserRole;
 import com.example.library.security.CurrentIdentity;
 import com.example.library.security.CurrentIdentityService;
 import com.example.library.web.FormFeedback;
+import com.example.library.web.ManagementSearch;
+import com.example.library.web.ManagementReturn;
+import com.example.library.web.ManagementListModel;
+import com.example.library.catalog.ManagementQueryService;
+import org.springframework.data.domain.Page;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,14 +26,14 @@ import java.util.List;
 public class AccountManagementController {
 
     private final AccountService accounts;
-    private final AppUserRepository users;
     private final CurrentIdentityService currentIdentity;
+    private final ManagementQueryService lists;
 
-    public AccountManagementController(AccountService accounts, AppUserRepository users,
-                                       CurrentIdentityService currentIdentity) {
+    public AccountManagementController(AccountService accounts,
+                                       CurrentIdentityService currentIdentity, ManagementQueryService lists) {
         this.accounts = accounts;
-        this.users = users;
         this.currentIdentity = currentIdentity;
+        this.lists = lists;
     }
 
     @GetMapping("/admin/accounts")
@@ -69,15 +73,22 @@ public class AccountManagementController {
     }
 
     @GetMapping("/staff/readers")
-    public String readers(Model model) {
+    public String readers(@RequestParam(required = false) String q,
+                          @RequestParam(required = false) String status,
+                          @RequestParam(defaultValue = "0") String page, Model model) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
-        List<ReaderProfile> profiles = accounts.listReaders(actor.role());
         model.addAttribute("loginName", actor.loginName());
-        model.addAttribute("readers", profiles.stream().map(profile -> new ReaderRow(
-                profile.getUserId(), profile.getReaderNo(),
-                users.findById(profile.getUserId()).map(user -> user.getDisplayName()).orElse("（账号缺失）"),
-                profile.getContact(), users.findById(profile.getUserId()).map(user -> user.getStatus().name()).orElse("未知")))
-                .toList());
+        try {
+            ManagementSearch search = ManagementSearch.parse(q, status, page, ManagementQueryService.READER_STATES);
+            var result = lists.readers(actor.role(), search);
+            ManagementListModel.apply(model, search, result, "/staff/readers", ManagementQueryService.READER_STATES);
+            model.addAttribute("readers", result.getContent());
+        } catch (IllegalArgumentException exception) {
+            ManagementListModel.apply(model, new ManagementSearch("", "ALL", 0), Page.empty(),
+                    "/staff/readers", ManagementQueryService.READER_STATES);
+            model.addAttribute("readers", List.of());
+            model.addAttribute("error", exception.getMessage());
+        }
         return "account/reader-management";
     }
 
@@ -86,9 +97,9 @@ public class AccountManagementController {
                                @RequestParam(required = false) String initialPassword,
                                @RequestParam(required = false) String displayName,
                                @RequestParam(required = false) String readerNo,
-                               @RequestParam(required = false) String contact, RedirectAttributes redirect) {
+                               @RequestParam(required = false) String contact, @ModelAttribute ManagementReturn listReturn, RedirectAttributes redirect) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
-        return performForm("/staff/readers", "READER_CREATE",
+        return performForm(listReturn.target("/staff/readers", ManagementQueryService.READER_STATES), "READER_CREATE",
                 FormFeedback.safeValues("loginName", loginName, "displayName", displayName,
                         "readerNo", readerNo, "contact", contact), redirect,
                 () -> accounts.createReader(actor.role(), loginName, initialPassword, displayName, readerNo, contact),
@@ -97,25 +108,25 @@ public class AccountManagementController {
 
     @PostMapping("/staff/readers/{userId}/update")
     public String updateReader(@PathVariable Long userId, @RequestParam(required = false) String displayName,
-                               @RequestParam(required = false) String contact, RedirectAttributes redirect) {
+                               @RequestParam(required = false) String contact, @ModelAttribute ManagementReturn listReturn, RedirectAttributes redirect) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
-        return performForm("/staff/readers", "READER_UPDATE_" + userId,
+        return performForm(listReturn.target("/staff/readers", ManagementQueryService.READER_STATES), "READER_UPDATE_" + userId,
                 FormFeedback.safeValues("displayName", displayName, "contact", contact), redirect,
                 () -> accounts.updateReader(actor.role(), userId, displayName, contact), "displayName", "contact");
     }
 
     @PostMapping("/staff/readers/{userId}/disable")
-    public String disableReader(@PathVariable Long userId, RedirectAttributes redirect) {
+    public String disableReader(@PathVariable Long userId, @ModelAttribute ManagementReturn listReturn, RedirectAttributes redirect) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
-        return perform("/staff/readers", redirect, () -> accounts.disableReader(actor.role(), userId));
+        return perform(listReturn.target("/staff/readers", ManagementQueryService.READER_STATES), redirect, () -> accounts.disableReader(actor.role(), userId));
     }
 
     @PostMapping("/staff/readers/{userId}/reset-password")
     public String resetReaderPassword(@PathVariable Long userId,
                                       @RequestParam(required = false) String newPassword,
-                                      RedirectAttributes redirect) {
+                                      @ModelAttribute ManagementReturn listReturn, RedirectAttributes redirect) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
-        return performForm("/staff/readers", "READER_RESET_" + userId, FormFeedback.safeValues(), redirect,
+        return performForm(listReturn.target("/staff/readers", ManagementQueryService.READER_STATES), "READER_RESET_" + userId, FormFeedback.safeValues(), redirect,
                 () -> accounts.resetReaderPassword(actor.role(), userId, newPassword), "newPassword");
     }
 
@@ -143,5 +154,4 @@ public class AccountManagementController {
         return "redirect:" + target;
     }
 
-    public record ReaderRow(Long userId, String readerNo, String displayName, String contact, String status) {}
 }

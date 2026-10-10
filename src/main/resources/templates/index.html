@@ -3,69 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="图书管理系统，记录每一本书的流转，让阅读与管理井然有序。">
+    <meta name="description" content="查找馆藏图书，了解可借数量，办理借还与预约。">
     <meta name="color-scheme" content="light">
-    <title>图书管理系统</title>
+    <title>首页 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
 <body>
-<div class="page-shell">
-    <header class="site-header">
-        <div class="brand">
-            <span class="brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 8.5C12.5 6.2 8.1 5.4 4 6.4V25C8.1 24 12.5 24.8 16 27M16 8.5C19.5 6.2 23.9 5.4 28 6.4V25C23.9 24 19.5 24.8 16 27M16 8.5V27" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </span>
-            <div>
-                <p class="brand-name">图书管理系统</p>
-                <p class="brand-caption">让每一本书，都有迹可循</p>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" class="page-shell home-main">
+    <th:block th:if="${!siteNav.authenticated}">
+        <section class="home-welcome" aria-labelledby="welcome-title">
+            <div class="home-welcome-copy">
+                <p class="eyebrow">阅读有序 · 管理有方</p>
+                <h1 id="welcome-title" class="home-title">每一次阅读，<br>从这里开始。</h1>
+                <p class="home-description">查找想读的书，了解馆藏与可借数量。登录后，即可进入你的阅读与管理空间。</p>
+                <a class="home-button" th:href="@{/login}">登录并查找图书 <span aria-hidden="true">→</span></a>
+                <p class="home-signin-note">使用管理员为你开通的账号登录。</p>
             </div>
-        </div>
-        <div class="account-actions">
-            <span class="status-badge"><span class="status-dot" aria-hidden="true"></span>馆藏目录已开放</span>
-            <a th:if="${!authenticated}" th:href="@{/login}">登录</a>
-            <a th:if="${authenticated}" th:href="@{/account/profile}">本人资料</a>
-            <form th:if="${authenticated}" method="post" th:action="@{/logout}">
-                <span class="card-copy" th:text="${loginName}"></span>
-                <button type="submit">退出登录</button>
+            <aside class="home-welcome-note" aria-label="使用指南">
+                <p class="eyebrow">你的图书馆</p>
+                <h2>一本书，一段新的旅程</h2>
+                <ol class="home-guide">
+                    <li><strong>找到想读的书</strong><span>按书名、作者或分类浏览馆藏。</span></li>
+                    <li><strong>了解当前馆藏</strong><span>查看每本书的可借数量与副本状态。</span></li>
+                    <li><strong>进入专属工作区</strong><span>读者查看个人借阅，馆员办理借还与入库。</span></li>
+                </ol>
+            </aside>
+        </section>
+    </th:block>
+
+    <th:block th:if="${siteNav.authenticated}">
+        <section class="home-intro" aria-labelledby="home-title">
+            <div>
+                <p class="eyebrow">欢迎来到馆藏首页</p>
+                <h1 id="home-title" class="home-title">找到下一本好书。</h1>
+                <p class="home-description">从书名、作者或分类出发，看看今天有哪些书可以借阅。</p>
+            </div>
+            <a class="home-text-link" th:href="@{${siteNav.workspacePath}}"><span th:text="${siteNav.workspaceLabel}">个人工作区</span> <span aria-hidden="true">↗</span></a>
+        </section>
+
+        <section th:replace="~{fragments/reader-reminders :: reminders}"></section>
+
+        <section class="home-search-panel" aria-label="检索馆藏">
+            <form class="home-search" method="get" th:action="@{/catalog}">
+                <div class="home-search-keyword">
+                    <label for="home-query">想找哪本书？</label>
+                    <input id="home-query" name="q" maxlength="100" placeholder="输入书名、作者或 ISBN" type="search">
+                </div>
+                <div class="home-search-category">
+                    <label for="home-category">图书分类</label>
+                    <select id="home-category" name="categoryId">
+                        <option value="">全部分类</option>
+                        <option th:each="category : ${homeCatalog.categories}" th:value="${category.id}" th:text="${category.name}"></option>
+                    </select>
+                </div>
+                <button type="submit">搜索馆藏 <span aria-hidden="true">→</span></button>
             </form>
-        </div>
-    </header>
-
-    <main>
-        <section class="hero" aria-labelledby="welcome-title">
-            <p class="eyebrow">阅读有序 · 管理有方</p>
-            <h1 class="hero-title" id="welcome-title">图书管理系统</h1>
-            <p class="hero-description">系统已成功启动</p>
-            <p class="hero-description">从馆藏维护、读者服务到借阅归还，记录图书当前状态与每一次流转。</p>
-            <p th:if="${authenticated}"><a class="catalog-link" th:href="@{/catalog}">检索馆藏图书</a></p>
         </section>
 
-        <section class="overview-grid" aria-label="系统简介与当前进度">
-            <article class="info-card">
-                <p class="card-label">建设目标</p>
-                <h2 class="card-title">有序管理馆藏</h2>
-                <p class="card-copy">围绕图书与实体副本，逐步建立清晰、可靠的馆藏信息。</p>
-            </article>
-            <article class="info-card">
-                <p class="card-label">服务方向</p>
-                <h2 class="card-title">记录借阅流转</h2>
-                <p class="card-copy">工作人员可办理图书借出与归还，读者能查看本人借阅和逾期情况。</p>
-            </article>
-            <article class="info-card">
-                <p class="card-label">当前进度</p>
-                <h2 class="card-title">按角色使用工作区</h2>
-                <p class="card-copy">登录后可使用书目、副本、账号、借阅、个人资料和统计功能；目录供所有已登录角色检索。</p>
-                <span class="card-status">业务功能已开放</span>
-            </article>
-        </section>
-    </main>
+        <dl class="home-stats" aria-label="当前馆藏概况">
+            <div><dt>馆藏书目</dt><dd><strong th:text="${homeCatalog.books.totalElements}">0</strong><span>种</span></dd></div>
+            <div><dt>在册图书</dt><dd><strong th:text="${homeInventory.circulatingCopies}">0</strong><span>册</span></dd></div>
+            <div><dt>当前可借</dt><dd><strong th:text="${homeInventory.availableCopies}">0</strong><span>册</span></dd></div>
+        </dl>
 
-    <footer class="page-footer">
-        <p class="footer-note">记录每一本书的流转，连接每一次阅读。</p>
-        <p class="footer-note">图书管理系统</p>
-    </footer>
-</div>
+        <section class="home-section" aria-labelledby="home-books-title">
+            <div class="home-section-heading">
+                <div><p class="eyebrow">浏览馆藏</p><h2 id="home-books-title">馆藏一览</h2></div>
+                <a class="home-text-link" th:href="@{/catalog}">查看全部图书 <span aria-hidden="true">→</span></a>
+            </div>
+            <nav th:if="${!homeCatalog.categories.empty}" class="home-categories" aria-label="按分类浏览图书">
+                <a th:href="@{/catalog}" class="home-category-all">全部分类</a>
+                <a th:each="category : ${homeCatalog.categories}" th:href="@{/catalog(categoryId=${category.id})}" th:text="${category.name}"></a>
+            </nav>
+            <div class="home-book-grid" th:if="${!homeCatalog.books.empty}">
+                <article class="home-book-card" th:each="book : ${homeCatalog.books.content}" th:with="counts=${homeCatalog.inventory[book.id]}">
+                    <p class="home-book-category" th:text="${homeCatalog.categoryNames[book.categoryId]}">图书分类</p>
+                    <h3><a th:href="@{/catalog/{id}(id=${book.id})}" th:text="${book.title}">书名</a></h3>
+                    <p class="home-book-author">作者：<span th:text="${book.author}">作者</span></p>
+                    <div class="home-book-stock">
+                        <span class="home-availability" th:classappend="${counts.available == 0} ? 'home-availability-empty' : ''"><span th:if="${counts.available > 0}">可借 <strong th:text="${counts.available}">0</strong> 册</span><span th:if="${counts.available == 0}">暂无可借</span></span>
+                        <span>在册 <span th:text="${counts.total() - counts.withdrawn}">0</span> 册</span>
+                    </div>
+                </article>
+            </div>
+            <p class="home-section-note" th:if="${!homeCatalog.books.empty}">按书名展示部分馆藏，可进入完整目录筛选更多图书。</p>
+            <div th:if="${homeCatalog.books.empty}" class="home-empty">
+                <h3>馆藏等待上架</h3>
+                <p>目前还没有可展示的图书。完成书目和副本入库后，就能在这里查看馆藏。</p>
+                <a th:if="${siteNav.role == 'ADMIN' or siteNav.role == 'LIBRARIAN'}" class="home-button" th:href="@{/staff/books}">录入第一本书 <span aria-hidden="true">→</span></a>
+                <p th:if="${siteNav.role == 'READER'}" class="home-signin-note">你可以稍后再来，或向馆员了解入库进度。</p>
+            </div>
+        </section>
+
+        <section class="home-section home-services" aria-labelledby="home-services-title">
+            <div class="home-section-heading"><div><p class="eyebrow">快速办理</p><h2 id="home-services-title">常用服务</h2></div></div>
+            <div class="home-service-grid">
+                <th:block th:if="${siteNav.role == 'ADMIN' or siteNav.role == 'LIBRARIAN'}">
+                    <a class="home-service-card" th:href="@{/staff/loans/checkout}"><span class="home-service-label">借阅办理</span><h3>借出图书 <span aria-hidden="true">↗</span></h3><p>为读者登记借阅，确认图书与归还日期。</p></a>
+                    <a class="home-service-card" th:href="@{/staff/loans/return}"><span class="home-service-label">归还办理</span><h3>归还图书 <span aria-hidden="true">↗</span></h3><p>登记归还，让图书继续流转。</p></a>
+                    <a class="home-service-card" th:href="@{/staff/books}"><span class="home-service-label">馆藏管理</span><h3>维护书目 <span aria-hidden="true">↗</span></h3><p>录入、修改书目信息，完善馆藏目录。</p></a>
+                    <a th:if="${siteNav.reservationsEnabled}" class="home-service-card" th:href="@{/staff/reservations}"><span class="home-service-label">预约服务</span><h3>预约取书 <span aria-hidden="true">↗</span></h3><p>查看待取图书，核验读者并办理取书。</p></a>
+                </th:block>
+                <th:block th:if="${siteNav.role == 'READER'}">
+                    <a class="home-service-card" th:href="@{/reader/loans}"><span class="home-service-label">我的阅读</span><h3>我的借阅 <span aria-hidden="true">↗</span></h3><p>查看借阅记录、应还日期与续借入口。</p></a>
+                    <a th:if="${siteNav.reservationsEnabled}" class="home-service-card" th:href="@{/reader/reservations}"><span class="home-service-label">预约服务</span><h3>我的预约 <span aria-hidden="true">↗</span></h3><p>查看预约进度与待领取的图书。</p></a>
+                    <a class="home-service-card" th:href="@{${siteNav.workspacePath}}"><span class="home-service-label">个人空间</span><h3>读者工作区 <span aria-hidden="true">↗</span></h3><p>了解个人借阅情况，找到常用功能。</p></a>
+                </th:block>
+                <a class="home-service-card" th:href="@{/account/profile}"><span class="home-service-label">账号服务</span><h3>个人资料 <span aria-hidden="true">↗</span></h3><p>查看账号信息，更新个人资料。</p></a>
+            </div>
+        </section>
+    </th:block>
+</main>
+
+<footer class="page-shell page-footer home-footer">
+    <p class="footer-note">记录每一本书的流转，连接每一次阅读。</p>
+    <p class="footer-note">图书管理系统</p>
+</footer>
 </body>
 </html>

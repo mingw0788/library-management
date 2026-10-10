@@ -49,6 +49,6 @@ public class SessionValidityFilter extends OncePerRequestFilter {
     private static boolean isPublicOrLogoutRequest(HttpServletRequest request) {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         return path.equals("/login") || path.equals("/logout") || path.equals("/error")
-                || path.startsWith("/css/") || path.equals("/favicon.ico");
+                || path.startsWith("/css/") || path.equals("/js/forms.js") || path.equals("/favicon.ico");
     }
 }

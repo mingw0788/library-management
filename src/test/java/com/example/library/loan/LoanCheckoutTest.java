@@ -59,6 +59,7 @@ class LoanCheckoutTest {
 
     @Autowired private MockMvc mvc;
     @Autowired private LoanCheckoutService checkout;
+    @Autowired private CheckoutSelectionService selections;
     @Autowired private LoanRepository loans;
     @Autowired private LoanRules rules;
     @Autowired private AccountService accounts;
@@ -112,6 +113,91 @@ class LoanCheckoutTest {
         bookIds.clear();
         categoryIds.clear();
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void searchSelectReviewAndCheckoutUsesDatabaseDisplayValues() throws Exception {
+        BookCopy copy = copy("搜索核对 " + token());
+        MockHttpSession session = login(librarian);
+        long before = loans.count();
+        mvc.perform(get("/staff/loans/checkout").session(session)
+                        .param("readerQuery", reader.getReaderNo()).param("bookQuery", copy.getBarcode()))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("readerChoices", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(model().attribute("copyChoices", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(content().string(containsString("选择读者")));
+        mvc.perform(get("/staff/loans/checkout").session(session)
+                        .param("readerNo", reader.getReaderNo()).param("barcode", copy.getBarcode())
+                        .param("displayName", "伪造姓名").param("dueDate", "2099-01-01"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("dueDate", rules.dueDateNow()))
+                .andExpect(model().attributeDoesNotExist("checkoutRestriction"))
+                .andExpect(content().string(containsString("已核对读者证及实体书条码")))
+                .andExpect(content().string(containsString("name=\"_csrf\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("伪造姓名"))));
+        assertEquals(before, loans.count(), "搜索、选择和核对 GET 不得办理借出");
+        mvc.perform(post("/staff/loans/checkout").session(session).with(csrf())
+                        .param("readerNo", reader.getReaderNo()).param("barcode", copy.getBarcode())
+                        .param("informationChecked", "on"))
+                .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("notice"));
+        assertEquals(BookCopyStatus.ON_LOAN, copies.findById(copy.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void selectionFiltersUnavailableAccountsCopiesAndLiteralWildcardsAndCapsResults() {
+        Book book = book("筛选上限 " + token());
+        for (int index = 0; index < 21; index++) copyFor(book, "选择" + index);
+        assertEquals(20, selections.copies(book.getTitle()).size());
+        assertEquals(1, selections.readers(reader.getReaderNo()).size());
+        String name = users.findById(reader.getUserId()).orElseThrow().getDisplayName();
+        assertTrue(selections.readers(name).stream().anyMatch(row -> row.id().equals(reader.getId())));
+        assertTrue(selections.readers(" ").isEmpty());
+        assertTrue(selections.copies("%").isEmpty(), "通配符按普通文本搜索");
+        assertThrows(IllegalArgumentException.class, () -> selections.readers("x".repeat(101)));
+        assertThrows(IllegalArgumentException.class, () -> selections.copies("bad\nquery"));
+        accounts.disableReader(UserRole.ADMIN, reader.getUserId());
+        assertTrue(selections.readers(reader.getReaderNo()).isEmpty());
+        assertNull(selections.reader(reader.getReaderNo()));
+        BookCopy withdrawn = copy("注销不选 " + token());
+        copyService.withdraw(UserRole.ADMIN, withdrawn.getId());
+        assertTrue(selections.copies(withdrawn.getBarcode()).isEmpty());
+        assertNull(selections.copy(withdrawn.getBarcode()));
+        BookCopy held = copy("保留不选 " + token());
+        held.holdForReservation();
+        copies.saveAndFlush(held);
+        assertTrue(selections.copies(held.getBarcode()).isEmpty());
+        BookCopy archived = copy("归档不选 " + token());
+        jdbc.update("UPDATE book SET status = 'ARCHIVED' WHERE id = ?", archived.getBookId());
+        assertTrue(selections.copies(archived.getBarcode()).isEmpty());
+    }
+
+    @Test
+    void reviewShowsRestrictionsAndStaleSelectionIsRejectedOnSubmit() throws Exception {
+        BookCopy first = copy("状态复核 " + token());
+        Book book = books.findById(first.getBookId()).orElseThrow();
+        BookCopy second = copyFor(book, "同书不重借");
+        MockHttpSession session = login(librarian);
+        checkout.checkout(librarian.getId(), UserRole.LIBRARIAN, reader.getReaderNo(), first.getBarcode());
+        mvc.perform(get("/staff/loans/checkout").session(session)
+                        .param("readerNo", reader.getReaderNo()).param("barcode", second.getBarcode()))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("checkoutRestriction", containsString("同一书目")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("informationChecked"))));
+        mvc.perform(get("/staff/loans/checkout").session(session)
+                        .param("readerNo", reader.getReaderNo()).param("barcode", first.getBarcode()))
+                .andExpect(status().isOk()).andExpect(model().attributeExists("selectionError"));
+        mvc.perform(get("/staff/loans/checkout").session(session).param("readerQuery", "x".repeat(101)))
+                .andExpect(status().isOk()).andExpect(model().attributeExists("selectionError"));
+        BookCopy stale = copy("核对后被借 " + token());
+        mvc.perform(get("/staff/loans/checkout").session(session)
+                        .param("readerNo", reader.getReaderNo()).param("barcode", stale.getBarcode()))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("informationChecked")));
+        ReaderProfile other = reader();
+        checkout.checkout(secondLibrarian.getId(), UserRole.LIBRARIAN, other.getReaderNo(), stale.getBarcode());
+        mvc.perform(post("/staff/loans/checkout").session(session).with(csrf())
+                        .param("readerNo", reader.getReaderNo()).param("barcode", stale.getBarcode()))
+                .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("error"));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM loan WHERE copy_id = ?", Integer.class, stale.getId()));
     }
 
     @Test

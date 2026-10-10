@@ -5,12 +5,14 @@
     <title>图书检索 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
-    <section class="hero">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
+    <section class="hero catalog-hero">
         <p class="eyebrow">馆藏目录</p><h1 class="hero-title">查找图书</h1>
-        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。检索仅展示有效书目；可借数量由在架副本实时汇总。</p>
+        <p class="hero-description">按书名、作者或 ISBN 查找，结合分类缩小范围。仅展示有效书目，可借数量随馆藏状态更新。</p>
         <p th:if="${error}" th:text="${error}" role="alert"></p>
-        <form method="get" th:action="@{/catalog}">
+        <form class="catalog-filters" method="get" th:action="@{/catalog}">
             <p><label for="catalog-query">关键词</label><br><input id="catalog-query" name="q" maxlength="100" th:value="${query}" placeholder="书名、作者或 ISBN"></p>
             <p><label for="catalog-category">分类</label><br><select id="catalog-category" name="categoryId">
                 <option value="">全部分类</option>
@@ -24,21 +26,38 @@
                 <option value="dateAsc" th:selected="${sort == 'dateAsc'}">出版日期从早到晚</option>
                 <option value="dateDesc" th:selected="${sort == 'dateDesc'}">出版日期从晚到早</option>
             </select></p>
-            <p><label for="catalog-size">每页数量（最多 100）</label><br><input id="catalog-size" name="size" type="number" min="1" max="100" th:value="${pageSize}"></p>
-            <button type="submit">检索</button><a th:href="@{/catalog}">清除条件</a>
+            <p><label for="catalog-size">每页数量</label><br><select id="catalog-size" name="size">
+                <option th:if="${pageSize != 10 and pageSize != 20 and pageSize != 50 and pageSize != 100}" th:value="${pageSize}" th:text="|${pageSize} 种|" selected></option>
+                <option th:each="amount : ${ {10, 20, 50, 100} }" th:value="${amount}" th:text="|${amount} 种|" th:selected="${pageSize == amount}"></option>
+            </select></p>
+            <div class="filter-actions"><button type="submit">检索</button><a th:href="@{/catalog}">清除条件</a></div>
         </form>
     </section>
-    <section class="info-card">
-        <h2 class="card-title">检索结果</h2>
-        <p>共 <span th:text="${booksPage.totalElements}"></span> 本；当前第 <span th:text="${booksPage.number + 1}"></span> / <span th:text="${booksPage.totalPages == 0 ? 1 : booksPage.totalPages}"></span> 页。</p>
-        <p th:if="${booksPage.empty}">没有找到符合条件的有效书目。</p>
-        <article th:each="book : ${booksPage.content}" class="reader-row">
-            <p><strong><a th:href="@{/catalog/{id}(id=${book.id})}" th:text="${book.title}"></a></strong></p>
-            <p>作者：<span th:text="${book.author}"></span> · 分类：<span th:text="${categoryNames[book.categoryId]}"></span></p>
-            <div th:with="counts=${inventory[book.id]}">
-                <p>可借 <strong th:text="${counts.available}"></strong> 册 · 在册总数 <span th:text="${counts.total() - counts.withdrawn}"></span> 册</p>
-            </div>
-        </article>
+    <section class="catalog-results">
+        <div class="home-section-heading"><h2 class="card-title">检索结果</h2><span class="catalog-result-count" th:text="|共 ${booksPage.totalElements} 种书目|"></span></div>
+        <nav class="catalog-active-filters" aria-label="当前筛选条件" th:if="${!#strings.isEmpty(query) or categoryId != null}">
+            <span>正在筛选</span>
+            <a th:if="${!#strings.isEmpty(query)}" th:href="@{/catalog(categoryId=${categoryId},sort=${sort},size=${pageSize})}" th:aria-label="|清除关键词：${query}|">关键词：<span th:text="${query}"></span><b aria-hidden="true">×</b></a>
+            <th:block th:each="category : ${categories}"><a th:if="${categoryId != null and category.id == categoryId}" th:href="@{/catalog(q=${query},sort=${sort},size=${pageSize})}" th:aria-label="|清除分类：${category.name}|">分类：<span th:text="${category.name}"></span><b aria-hidden="true">×</b></a></th:block>
+            <a class="catalog-reset" th:href="@{/catalog}">重置全部</a>
+        </nav>
+        <p>共 <span th:text="${booksPage.totalElements}"></span> 种书目；当前第 <span th:text="${booksPage.number + 1}"></span> / <span th:text="${booksPage.totalPages == 0 ? 1 : booksPage.totalPages}"></span> 页。</p>
+        <div class="home-empty" th:if="${booksPage.empty}">
+            <h3 th:text="${error != null ? '请调整检索条件' : '试试其他关键词或分类'}"></h3>
+            <p>没有找到符合条件的有效书目。可以缩短关键词，或清除一个筛选条件后再试。</p>
+            <a th:href="@{/catalog}">清除条件，浏览全部馆藏</a>
+        </div>
+        <div class="home-book-grid">
+            <article th:each="book : ${booksPage.content}" class="home-book-card" th:with="counts=${inventory[book.id]}">
+                <p class="home-book-category" th:text="${categoryNames[book.categoryId]}"></p>
+                <h3><a th:href="@{/catalog/{id}(id=${book.id},q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=${booksPage.number})}" th:text="${book.title}"></a></h3>
+                <p class="home-book-author">作者：<span th:text="${book.author}"></span></p>
+                <div class="home-book-stock">
+                    <span class="home-availability" th:classappend="${counts.available == 0} ? 'home-availability-empty' : ''">可借 <strong th:text="${counts.available}"></strong> 册</span>
+                    <span>在册总数 <span th:text="${counts.total() - counts.withdrawn}"></span> 册</span>
+                </div>
+            </article>
+        </div>
         <nav th:if="${booksPage.totalPages > 1}" aria-label="检索结果分页" class="page-nav">
             <a th:if="${booksPage.hasPrevious()}" th:href="@{/catalog(q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=${booksPage.number - 1})}">上一页</a>
             <a th:if="${showFirstPage}" th:href="@{/catalog(q=${query},categoryId=${categoryId},sort=${sort},size=${pageSize},page=0)}">1</a>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org"><body>
+<section th:fragment="reminders" th:if="${readerReminders != null}" class="home-section reader-reminders" aria-labelledby="reminders-title">
+    <div class="home-section-heading">
+        <div><p class="eyebrow">我的阅读日程</p><h2 id="reminders-title">借阅与取书提醒</h2></div>
+        <a class="home-text-link" th:href="@{/reader/loans(state='CURRENT')}">查看我的借阅 <span aria-hidden="true">→</span></a>
+    </div>
+    <p th:if="${!readerReminders.profileAvailable}" class="home-empty">暂未找到你的读者档案，请联系馆员完善资料。</p>
+    <th:block th:if="${readerReminders.profileAvailable}">
+        <div class="reminder-grid" th:classappend="${!readerReminders.reservationsEnabled} ? 'reminder-grid-two' : ''">
+            <article class="reminder-card reminder-overdue" aria-labelledby="overdue-title">
+                <div class="reminder-heading"><h3 id="overdue-title">逾期未还</h3><span class="reminder-count" th:text="${readerReminders.overdueCount}"></span></div>
+                <p class="reminder-empty" th:if="${readerReminders.overdueCount == 0}">没有逾期未还的图书。</p>
+                <ul class="reminder-list" th:if="${readerReminders.overdueCount > 0}">
+                    <li th:each="item : ${readerReminders.overdue}"><a th:href="@{/catalog/{id}(id=${item.bookId})}" th:text="${item.title}"></a>
+                        <strong class="reminder-urgency" th:text="${item.dueLabel(readerReminders.today)}"></strong>
+                        <span>应还日期：<time th:datetime="${item.dueDate}" th:text="${item.dueDate}"></time></span></li>
+                </ul>
+                <p class="reminder-note" th:if="${readerReminders.overdueCount > 0}">请携图书到馆归还，逾期记录暂不能续借。</p>
+                <p class="reminder-note" th:if="${readerReminders.overdueCount > 5}">仅列出应还日期最早的 5 项，更多记录请查看我的借阅。</p>
+            </article>
+            <article class="reminder-card reminder-due" aria-labelledby="due-title">
+                <div class="reminder-heading"><h3 id="due-title">近期应还</h3><span class="reminder-count" th:text="${readerReminders.dueSoonCount}"></span></div>
+                <p class="reminder-note">今天及未来 3 天应还的未还图书。</p>
+                <p class="reminder-empty" th:if="${readerReminders.dueSoonCount == 0}">近期没有需要归还的图书。</p>
+                <ul class="reminder-list" th:if="${readerReminders.dueSoonCount > 0}">
+                    <li th:each="item : ${readerReminders.dueSoon}"><a th:href="@{/catalog/{id}(id=${item.bookId})}" th:text="${item.title}"></a>
+                        <strong class="reminder-urgency" th:text="${item.dueLabel(readerReminders.today)}"></strong>
+                        <span>应还日期：<time th:datetime="${item.dueDate}" th:text="${item.dueDate}"></time></span></li>
+                </ul>
+                <a class="home-text-link" th:if="${readerReminders.dueSoonCount > 0}" th:href="@{/reader/loans(state='CURRENT')}">查看借阅及续借资格 →</a>
+                <p class="reminder-note" th:if="${readerReminders.dueSoonCount > 5}">仅列出应还日期最早的 5 项。</p>
+            </article>
+            <article class="reminder-card reminder-ready" th:if="${readerReminders.reservationsEnabled}" aria-labelledby="ready-title">
+                <div class="reminder-heading"><h3 id="ready-title">预约待取</h3><span class="reminder-count" th:text="${readerReminders.readyCount}"></span></div>
+                <p class="reminder-empty" th:if="${readerReminders.readyCount == 0}">当前没有等待领取的预约图书。</p>
+                <ul class="reminder-list" th:if="${readerReminders.readyCount > 0}">
+                    <li th:each="item : ${readerReminders.ready}"><a th:href="@{/catalog/{id}(id=${item.bookId})}" th:text="${item.title}"></a>
+                        <strong class="reminder-urgency">请在截止时间前到馆取书</strong>
+                        <span>取书截止：<time th:datetime="${item.holdExpiresAt}" th:text="${item.deadline(readerReminders.timeZone)}"></time></span></li>
+                </ul>
+                <a class="home-text-link" th:href="@{/reader/reservations}">查看我的预约 →</a>
+                <p class="reminder-note" th:if="${readerReminders.readyCount > 5}">仅列出截止时间最早的 5 项。</p>
+            </article>
+        </div>
+        <p class="home-section-note">日期与时间按 <span th:text="${readerReminders.timeZone}"></span> 计算，刷新页面可查看最新状态。办理续借和取书时会重新核对资格。</p>
+    </th:block>
+</section>
+</body></html>

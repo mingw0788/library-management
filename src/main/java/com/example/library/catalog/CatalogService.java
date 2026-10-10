@@ -71,6 +71,11 @@ public class CatalogService {
         return categories.findAllByOrderByNameAsc();
     }
 
+    @Transactional(readOnly = true)
+    public CatalogOverview overview() {
+        return copies.catalogOverview(BookStatus.ACTIVE, BookCopyStatus.WITHDRAWN, BookCopyStatus.AVAILABLE);
+    }
+
     private Map<Long, BookCopyInventory> inventoryFor(List<Book> pageBooks) {
         if (pageBooks.isEmpty()) return Map.of();
         List<Long> ids = pageBooks.stream().map(Book::getId).toList();

@@ -19,6 +19,7 @@ import jakarta.persistence.Version;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "loan")
@@ -74,7 +75,8 @@ public class Loan {
     Loan(ReaderProfile reader, BookCopy copy, Instant borrowedAt, LocalDate dueDate, AppUser checkoutOperator) {
         this.reader = reader;
         this.copy = copy;
-        this.borrowedAt = borrowedAt;
+        // MySQL DATETIME(6) stores microseconds; normalize before persistence and comparison.
+        this.borrowedAt = borrowedAt == null ? null : borrowedAt.truncatedTo(ChronoUnit.MICROS);
         this.dueDate = dueDate;
         this.checkoutOperator = checkoutOperator;
         this.renewCount = 0;
@@ -90,6 +92,7 @@ public class Loan {
         if (this.returnedAt != null || returnedAt == null || returnOperator == null) {
             throw new IllegalArgumentException("该借阅已归还或归还资料不完整");
         }
+        returnedAt = returnedAt.truncatedTo(ChronoUnit.MICROS);
         if (returnedAt.isBefore(borrowedAt)) {
             throw new IllegalArgumentException("归还时刻不能早于借出时刻");
         }

@@ -20,7 +20,7 @@ public class SecurityConfiguration {
     SecurityFilterChain applicationSecurity(HttpSecurity http, AppUserRepository appUserRepository) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/", "/login", "/css/**", "/favicon.ico", "/error").permitAll()
+                        .requestMatchers("/", "/login", "/css/**", "/js/forms.js", "/favicon.ico", "/error").permitAll()
                         .requestMatchers("/admin", "/admin/**").hasRole("ADMIN")
                         .requestMatchers("/staff", "/staff/**").hasAnyRole("ADMIN", "LIBRARIAN")
                         .requestMatchers("/reader", "/reader/**").hasRole("READER")

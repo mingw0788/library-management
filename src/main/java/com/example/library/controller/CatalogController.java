@@ -3,8 +3,12 @@ package com.example.library.controller;
 import com.example.library.catalog.CatalogBookDetail;
 import com.example.library.catalog.CatalogSearchResult;
 import com.example.library.catalog.CatalogService;
+import com.example.library.account.UserRole;
+import com.example.library.reservation.ReservationService;
+import org.springframework.beans.factory.ObjectProvider;
 import com.example.library.security.CurrentIdentity;
 import com.example.library.security.CurrentIdentityService;
+import com.example.library.web.CatalogReturn;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,10 +28,13 @@ public class CatalogController {
 
     private final CatalogService catalog;
     private final CurrentIdentityService currentIdentity;
+    private final ObjectProvider<ReservationService> reservations;
 
-    public CatalogController(CatalogService catalog, CurrentIdentityService currentIdentity) {
+    public CatalogController(CatalogService catalog, CurrentIdentityService currentIdentity,
+                             ObjectProvider<ReservationService> reservations) {
         this.catalog = catalog;
         this.currentIdentity = currentIdentity;
+        this.reservations = reservations;
     }
 
     @GetMapping("/catalog")
@@ -50,6 +57,7 @@ public class CatalogController {
             model.addAttribute("categoryNames", result.categoryNames());
             model.addAttribute("categoryId", result.categoryId());
             model.addAttribute("sort", result.sort());
+            model.addAttribute("query", result.keyword() == null ? "" : result.keyword());
             model.addAttribute("pageSize", result.books().getSize());
             addPageWindow(model, result.books());
         } catch (IllegalArgumentException exception) {
@@ -64,12 +72,18 @@ public class CatalogController {
     }
 
     @GetMapping("/catalog/{id}")
-    public String detail(@PathVariable Long id, Model model, HttpServletResponse response) throws IOException {
+    public String detail(@PathVariable Long id, @RequestParam Map<String, String> browseParameters,
+                         Model model, HttpServletResponse response) throws IOException {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
         model.addAttribute("loginName", actor.loginName());
+        model.addAttribute("catalogReturnUrl", CatalogReturn.target(browseParameters));
         try {
             CatalogBookDetail detail = catalog.detail(id);
             model.addAttribute("detail", detail);
+            ReservationService reservationService = reservations.getIfAvailable();
+            if (actor.role() == UserRole.READER && reservationService != null) {
+                model.addAttribute("reservationOffer", reservationService.offerForReader(actor.userId(), detail));
+            }
             return "catalog/detail";
         } catch (IllegalArgumentException exception) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);

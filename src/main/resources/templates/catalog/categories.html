@@ -5,7 +5,9 @@
     <title>分类管理 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">管理员与馆员</p><h1 class="hero-title">图书分类</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。名称会去除首尾空格；大小写和重音符号不区分，重复名称会被拒绝。</p>

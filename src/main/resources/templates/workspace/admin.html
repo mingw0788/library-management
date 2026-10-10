@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
 <body>
-<main class="page-shell">
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">管理员工作区</p>
-        <h1 class="hero-title">系统管理</h1>
-        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。可在此管理员工账号，并进入工作人员工作区管理读者。</p>
-        <p><a th:href="@{/account/profile}">本人资料</a>　<a th:href="@{/catalog}">检索目录</a>　<a th:href="@{/admin/accounts}">工作人员账号管理</a>　<a th:href="@{/admin/audit}">关键操作审计</a>　<a th:href="@{/staff/readers}">读者管理</a>　<a th:href="@{/staff/categories}">分类管理</a>　<a th:href="@{/staff/books}">书目管理</a>　<a th:href="@{/staff/copies}">实体副本</a>　<a th:href="@{/staff}">工作人员工作区</a>　<a th:href="@{/}">返回首页</a></p>
+        <h1 class="hero-title">系统管理，一目了然</h1>
+        <p class="hero-description">掌握全馆库存与借阅情况，从这里进入馆务办理、账号管理和操作审计。 当前账号：<span th:text="${loginName}"></span>。</p>
     </section>
     <div th:replace="~{workspace/dashboard-fragments :: staffStatistics(${staffStats})}"></div>
 </main>

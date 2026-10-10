@@ -1,35 +1,68 @@
 <!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <body>
-<section th:fragment="staffStatistics(stats)" aria-labelledby="staff-statistics-title">
-    <h2 id="staff-statistics-title">全馆概况</h2>
-    <p class="card-copy">书目总数包含已归档书目；副本总数包含已注销副本，有效副本不含已注销副本。逾期按上海日期计算，应还当天不算逾期。</p>
-    <div class="overview-grid dashboard-grid">
-        <article class="info-card dashboard-card">
-            <h3 class="card-label">书目总数</h3>
-            <p class="dashboard-value" th:text="${stats.bookTitles}">0</p>
-        </article>
-        <article class="info-card dashboard-card">
-            <h3 class="card-label">副本总数</h3>
-            <p class="dashboard-value" th:text="${stats.copiesTotal}">0</p>
-        </article>
-        <article class="info-card dashboard-card">
-            <h3 class="card-label">有效副本</h3>
-            <p class="dashboard-value" th:text="${stats.copiesValid}">0</p>
-        </article>
-        <article class="info-card dashboard-card">
-            <h3 class="card-label">可借副本</h3>
-            <p class="dashboard-value" th:text="${stats.copiesAvailable}">0</p>
-        </article>
-        <article class="info-card dashboard-card">
-            <h3 class="card-label">当前借阅</h3>
-            <p class="dashboard-value" th:text="${stats.currentLoans}">0</p>
-        </article>
-        <article class="info-card dashboard-card">
-            <h3 class="card-label">当前逾期未还</h3>
-            <p class="dashboard-value" th:text="${stats.currentOverdueLoans}">0</p>
-        </article>
+<section th:fragment="staffStatistics(stats)" class="staff-overview" aria-labelledby="staff-statistics-title"
+         th:with="unavailable=${T(java.lang.Math).max(0L, stats.copiesValid - stats.copiesAvailable)}, withdrawn=${T(java.lang.Math).max(0L, stats.copiesTotal - stats.copiesValid)}, onTime=${T(java.lang.Math).max(0L, stats.currentLoans - stats.currentOverdueLoans)}">
+    <div class="home-section-heading">
+        <div><p class="eyebrow">馆务看板</p><h2 id="staff-statistics-title">全馆概况</h2></div>
+        <a class="home-text-link" th:href="@{/staff/loans(state='CURRENT')}">查看当前借阅 →</a>
     </div>
+    <p class="card-copy">书目含已归档记录，副本总数含已注销记录。统计随页面刷新更新；应还当天不算逾期。</p>
+    <div class="overview-grid dashboard-grid staff-metrics">
+        <a class="info-card dashboard-card metric-link" th:href="@{/staff/books}"><h3 class="card-label">书目总数</h3><p class="dashboard-value" th:text="${stats.bookTitles}">0</p><span>查看全部书目 →</span></a>
+        <a class="info-card dashboard-card metric-link" th:href="@{/staff/copies}"><h3 class="card-label">副本总数</h3><p class="dashboard-value" th:text="${stats.copiesTotal}">0</p><span>包含已注销副本 →</span></a>
+        <article class="info-card dashboard-card"><h3 class="card-label">有效副本</h3><p class="dashboard-value" th:text="${stats.copiesValid}">0</p><span>不含已注销副本</span></article>
+        <a class="info-card dashboard-card metric-link" th:href="@{/staff/copies(status='AVAILABLE')}"><h3 class="card-label">可借副本</h3><p class="dashboard-value" th:text="${stats.copiesAvailable}">0</p><span>查看可借馆藏 →</span></a>
+        <a class="info-card dashboard-card metric-link" th:href="@{/staff/loans(state='CURRENT')}"><h3 class="card-label">当前借阅</h3><p class="dashboard-value" th:text="${stats.currentLoans}">0</p><span>查看未还记录 →</span></a>
+        <article class="info-card dashboard-card metric-warning"><h3 class="card-label">当前逾期未还</h3><p class="dashboard-value" th:text="${stats.currentOverdueLoans}">0</p><span>按上海业务日期计算</span></article>
+    </div>
+    <div class="staff-chart-grid">
+        <section class="staff-chart" aria-labelledby="inventory-chart-title">
+            <div class="staff-chart-heading"><h3 id="inventory-chart-title">副本可借情况</h3><span th:text="|共 ${stats.copiesTotal} 册|">共 0 册</span></div>
+            <p class="staff-chart-subtitle">可借、借出或保留、已注销的馆藏分布</p>
+            <div class="staff-chart-bar" aria-hidden="true" th:if="${stats.copiesTotal > 0}">
+                <span class="chart-available" th:if="${stats.copiesAvailable > 0}" th:style="|flex-grow: ${stats.copiesAvailable}|"></span>
+                <span class="chart-unavailable" th:if="${unavailable > 0}" th:style="|flex-grow: ${unavailable}|"></span>
+                <span class="chart-withdrawn" th:if="${withdrawn > 0}" th:style="|flex-grow: ${withdrawn}|"></span>
+            </div>
+            <p class="staff-chart-empty" th:if="${stats.copiesTotal == 0}">还没有实体副本，登记馆藏后即可查看分布。</p>
+            <dl class="staff-chart-legend">
+                <div><dt><i class="chart-available" aria-hidden="true"></i>可借</dt><dd th:text="|${stats.copiesAvailable} 册|">0 册</dd></div>
+                <div><dt><i class="chart-unavailable" aria-hidden="true"></i>暂不可借</dt><dd th:text="|${unavailable} 册|">0 册</dd></div>
+                <div><dt><i class="chart-withdrawn" aria-hidden="true"></i>已注销</dt><dd th:text="|${withdrawn} 册|">0 册</dd></div>
+            </dl>
+            <p class="staff-chart-note">暂不可借包含借出与预约保留，已注销副本不计入有效馆藏。</p>
+            <a class="home-text-link" th:href="@{/staff/copies}">管理馆藏副本 →</a>
+        </section>
+        <section class="staff-chart" aria-labelledby="loan-chart-title">
+            <div class="staff-chart-heading"><h3 id="loan-chart-title">未还借阅逾期情况</h3><span th:text="|共 ${stats.currentLoans} 笔|">共 0 笔</span></div>
+            <p class="staff-chart-subtitle">仅统计当前未归还的借阅</p>
+            <div class="staff-chart-bar" aria-hidden="true" th:if="${stats.currentLoans > 0}">
+                <span class="chart-available" th:if="${onTime > 0}" th:style="|flex-grow: ${onTime}|"></span>
+                <span class="chart-overdue" th:if="${stats.currentOverdueLoans > 0}" th:style="|flex-grow: ${stats.currentOverdueLoans}|"></span>
+            </div>
+            <p class="staff-chart-empty" th:if="${stats.currentLoans == 0}">当前没有未还借阅，办理借出后即可查看。</p>
+            <dl class="staff-chart-legend">
+                <div><dt><i class="chart-available" aria-hidden="true"></i>未逾期</dt><dd th:text="|${onTime} 笔|">0 笔</dd></div>
+                <div><dt><i class="chart-overdue" aria-hidden="true"></i>逾期未还</dt><dd th:text="|${stats.currentOverdueLoans} 笔|">0 笔</dd></div>
+            </dl>
+            <p class="staff-chart-note">今天应还仍属于未逾期；已归还记录不计入本图。</p>
+            <a class="home-text-link" th:href="@{/staff/loans(state='CURRENT')}">查看未还借阅 →</a>
+        </section>
+    </div>
+    <section class="staff-shortcuts" aria-labelledby="staff-shortcuts-title">
+        <div class="home-section-heading"><div><p class="eyebrow">常用事务</p><h2 id="staff-shortcuts-title">快捷操作</h2></div></div>
+        <div class="staff-action-grid">
+            <a class="staff-action staff-action-primary" th:href="@{/staff/loans/checkout}"><span class="staff-action-icon" aria-hidden="true">借</span><div><strong>办理借出</strong><small>搜索读者与副本，核对后借出</small></div><span aria-hidden="true">↗</span></a>
+            <a class="staff-action" th:href="@{/staff/loans/return}"><span class="staff-action-icon" aria-hidden="true">还</span><div><strong>办理归还</strong><small>按实体书条码或借阅编号归还</small></div><span aria-hidden="true">↗</span></a>
+            <a class="staff-action" th:href="@{/staff/readers}"><span class="staff-action-icon" aria-hidden="true">人</span><div><strong>读者管理</strong><small>登记读者、查询档案与账号状态</small></div><span aria-hidden="true">↗</span></a>
+            <a class="staff-action" th:href="@{/staff/books}"><span class="staff-action-icon" aria-hidden="true">书</span><div><strong>书目管理</strong><small>维护书名、作者及分类信息</small></div><span aria-hidden="true">↗</span></a>
+            <a class="staff-action" th:href="@{/staff/copies}"><span class="staff-action-icon" aria-hidden="true">册</span><div><strong>馆藏副本</strong><small>登记实体书、查看条码与库存</small></div><span aria-hidden="true">↗</span></a>
+            <a class="staff-action" th:if="${siteNav.reservationsEnabled}" th:href="@{/staff/reservations}"><span class="staff-action-icon" aria-hidden="true">约</span><div><strong>预约取书</strong><small>核对待取预约，办理取书借出</small></div><span aria-hidden="true">↗</span></a>
+            <a class="staff-action" th:if="${siteNav.role == 'ADMIN'}" th:href="@{/admin/accounts}"><span class="staff-action-icon" aria-hidden="true">员</span><div><strong>工作人员账号</strong><small>管理员专用 · 维护工作人员权限</small></div><span aria-hidden="true">↗</span></a>
+            <a class="staff-action" th:if="${siteNav.role == 'ADMIN'}" th:href="@{/admin/audit}"><span class="staff-action-icon" aria-hidden="true">录</span><div><strong>操作审计</strong><small>管理员专用 · 追溯业务操作记录</small></div><span aria-hidden="true">↗</span></a>
+        </div>
+    </section>
 </section>
 
 <section th:fragment="readerStatistics(stats)" aria-labelledby="reader-statistics-title">

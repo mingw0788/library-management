@@ -46,6 +46,8 @@ notepad .local\mysql-connection.json
 
 ### 在专用空库首次复现迁移
 
+D05 已使用 D04 交付 JAR 在新建独立空库实际验证 V1—V12、首次管理员强制改密、关闭初始化后重启及馆藏/借还流程，详见 [V12 空库验收报告](empty-v12-report.md)。本次采用 dev profile 并以进程环境的 `SPRING_DATASOURCE_URL` 覆盖到验收 schema；应用账号只获该验收库权限，原开发库和测试库未改变。
+
 自动测试配置固定使用 `library_test`，并包含该库名称的隔离断言。需要从空库复现初次迁移时，先由数据库管理员在本机 MySQL 创建一个全新的独立 schema 和只访问该 schema 的专用账号；不要删除或清空现有 `library_test`、`library_dev` 或恢复演练库。可用 prod profile 加外部配置指向这个一次性验收 schema，配置文件保存在被忽略的 `.local` 中，结构参考 `config/application-prod.example.yml`，只把 URL 的 schema 名改为验收库名。随后使用 prod 环境变量启动打包 JAR；Flyway 应从 V1 自动运行到 V12，Hibernate 再校验结构。检查后停止应用，并按本机数据库管理规则处理这个一次性 schema。T23 曾验证 V1—V8，X01 加入 V9，X02 加入 V10，X03 加入 V11，X04 在现有 dev/test 库验证 V12 升级。
 
 ## 本地启动和管理员初始化

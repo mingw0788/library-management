@@ -5,7 +5,9 @@
     <title>工作人员账号管理 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">仅管理员可用</p><h1 class="hero-title">工作人员账号</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。创建或重置后请通过安全方式把临时密码交给本人。</p>

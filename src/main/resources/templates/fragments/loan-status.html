@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org"><body>
+<span th:fragment="status(loan)">
+    <span class="record-status record-status-warning" th:if="${loan.overdue}">当前逾期</span>
+    <span class="record-status record-status-warning" th:if="${loan.returnedLate}">逾期归还</span>
+    <span class="record-status" th:if="${!loan.overdue and !loan.returnedLate and loan.returnedAt == null}">借阅中</span>
+    <span class="record-status record-status-muted" th:if="${!loan.returnedLate and loan.returnedAt != null}">已归还</span>
+</span>
+</body></html>

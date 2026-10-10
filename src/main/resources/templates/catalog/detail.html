@@ -2,28 +2,62 @@
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>书目详情 · 图书管理系统</title>
+    <title th:text="|${detail.book.title} · 图书管理系统|">书目详情 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
+    <nav class="catalog-breadcrumb" aria-label="目录导航"><a th:href="${catalogReturnUrl}">← 返回检索结果</a><span aria-hidden="true">/</span><span th:text="${detail.category.name}"></span></nav>
     <section class="hero">
         <p class="eyebrow">馆藏目录 · 当前账号：<span th:text="${loginName}"></span></p>
         <h1 class="hero-title" th:text="${detail.book.title}"></h1>
         <p class="hero-description">作者：<span th:text="${detail.book.author}"></span> · 分类：<span th:text="${detail.category.name}"></span></p>
     </section>
-    <section class="info-card">
+    <section class="detail-availability" aria-labelledby="detail-stock-title">
+        <div><p class="eyebrow" id="detail-stock-title">当前馆藏</p><p class="detail-stock-number"><strong th:text="${detail.availableCount}">0</strong> 册可借 <span th:text="|/ 在册 ${#lists.size(detail.copies)} 册|"></span></p>
+            <p th:if="${detail.availableCount > 0}">有可借副本。请查看馆藏位置，携读者证和实体书到服务台办理借出。</p>
+            <p th:if="${detail.availableCount == 0 and !#lists.isEmpty(detail.copies)}" th:text="${reservationOffer != null ? '当前副本均已借出或保留。可查看下方预约说明，或联系馆员咨询。' : '当前副本均已借出或保留，请联系馆员咨询。'}"></p>
+            <p th:if="${#lists.isEmpty(detail.copies)}">当前没有在册副本，请联系馆员咨询馆藏安排。</p>
+        </div>
+        <div class="detail-stock-actions"><a class="home-button" href="#copy-locations">查看馆藏位置 ↓</a>
+            <a th:if="${siteNav.role == 'ADMIN' or siteNav.role == 'LIBRARIAN'}" th:href="@{/staff/loans/checkout(bookQuery=${detail.book.title})}">为这本书办理借出 →</a>
+            <a th:if="${siteNav.role == 'READER' and reservationOffer != null}" href="#reservation">查看预约状态 →</a>
+        </div>
+    </section>
+    <section class="info-card book-detail">
         <h2 class="card-title">书目资料</h2>
-        <p>出版社：<span th:text="${detail.book.publisher == null ? '未填写' : detail.book.publisher}"></span></p>
-        <p>出版日期：<span th:text="${detail.book.publishedDate == null ? '未填写' : detail.book.publishedDate}"></span></p>
-        <p>ISBN：<span th:text="${detail.book.isbn == null ? '未填写' : detail.book.isbn}"></span></p>
-        <p>简介：<span th:text="${detail.book.description == null ? '暂无简介' : detail.book.description}"></span></p>
-        <p>当前可借：<strong th:text="${detail.availableCount}"></strong> 册</p>
-        <h2 class="card-title">馆藏副本</h2>
+        <dl class="book-metadata">
+            <div><dt>出版社</dt><dd th:text="${detail.book.publisher == null ? '未填写' : detail.book.publisher}"></dd></div>
+            <div><dt>出版日期</dt><dd th:text="${detail.book.publishedDate == null ? '未填写' : detail.book.publishedDate}"></dd></div>
+            <div><dt>ISBN</dt><dd th:text="${detail.book.isbn == null ? '未填写' : detail.book.isbn}"></dd></div>
+        </dl>
+        <p class="book-description">简介：<span th:text="${detail.book.description == null ? '暂无简介' : detail.book.description}"></span></p>
+
+        <section th:if="${reservationOffer != null}" id="reservation" class="book-reservation" aria-labelledby="reservation-heading">
+            <h2 id="reservation-heading" class="card-title">预约这本书</h2>
+            <p th:if="${notice}" class="message-success" role="status" th:text="${notice}"></p>
+            <p th:if="${error}" class="message-error" role="alert" th:text="${error}"></p>
+            <p th:text="${reservationOffer.message}"></p>
+            <div class="reservation-actions">
+                <form th:if="${reservationOffer.canReserve}" method="post"
+                      th:action="@{/reader/reservations/books/{bookId}(bookId=${detail.book.id})}">
+                    <button type="submit">预约这本书</button>
+                </form>
+                <a th:href="@{/reader/reservations}">查看我的预约</a>
+            </div>
+            <p class="reservation-hint" th:if="${reservationOffer.canReserve}">提交时会重新核对馆藏状态和借阅资格，预约结果以提交后提示为准。</p>
+        </section>
+        <div class="home-section-heading" id="copy-locations"><h2 class="card-title">馆藏位置与副本</h2><span class="catalog-result-count" th:text="|在册 ${#lists.size(detail.copies)} 册|"></span></div>
+        <p class="card-copy">可借状态以办理时核验为准；已注销副本不在此展示。</p>
         <p th:if="${#lists.isEmpty(detail.copies)}">目前没有可流通副本。</p>
-        <article th:each="copy : ${detail.copies}" class="reader-row">
-            <p>状态：<strong th:text="${copy.status == T(com.example.library.catalog.BookCopyStatus).AVAILABLE ? '可借' : (copy.status == T(com.example.library.catalog.BookCopyStatus).HELD ? '预约保留' : '借出中')}"></strong></p>
+        <div class="copy-grid">
+        <article th:each="copy, item : ${detail.copies}" class="copy-card">
+            <p class="copy-card-label" th:text="|副本 ${item.count}|"></p>
+            <p>状态：<strong class="copy-status" th:classappend="${copy.status.name() == 'AVAILABLE' ? 'copy-available' : 'copy-unavailable'}" th:text="${copy.status == T(com.example.library.catalog.BookCopyStatus).AVAILABLE ? '可借' : (copy.status == T(com.example.library.catalog.BookCopyStatus).HELD ? '预约保留' : '借出中')}"></strong></p>
             <p>馆藏位置：<span th:text="${copy.shelfLocation == null ? '未填写' : copy.shelfLocation}"></span></p>
         </article>
-        <p><a th:href="@{/catalog}">返回检索目录</a></p>
+        </div>
+        <div class="detail-footer-links"><a th:href="${catalogReturnUrl}">← 返回检索结果</a><a th:href="@{/catalog(categoryId=${detail.category.id})}">浏览同分类图书 →</a></div>
     </section>
 </main></body></html>

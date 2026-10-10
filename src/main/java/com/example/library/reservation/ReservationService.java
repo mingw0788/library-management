@@ -13,6 +13,7 @@ import com.example.library.catalog.BookCopyRepository;
 import com.example.library.catalog.BookCopyStatus;
 import com.example.library.catalog.BookRepository;
 import com.example.library.catalog.BookStatus;
+import com.example.library.catalog.CatalogBookDetail;
 import com.example.library.loan.Loan;
 import com.example.library.loan.LoanRepository;
 import com.example.library.loan.LoanRules;
@@ -93,16 +94,8 @@ public class ReservationService {
             throw new IllegalArgumentException("该书目当前有可借副本，不能预约");
         }
 
-        if (loans.existsByReader_IdAndReturnedAtIsNullAndDueDateBefore(reader.getId(), loanRules.today())) {
-            throw new IllegalArgumentException("存在逾期未还借阅，不能预约");
-        }
-        if (loans.countByReader_IdAndReturnedAtIsNull(reader.getId())
-                >= loanRules.policy().maximumActiveLoans()) {
-            throw new IllegalArgumentException("当前借阅数量已达到上限，不能预约");
-        }
-        if (loans.existsByReader_IdAndReturnedAtIsNullAndCopy_Book_Id(reader.getId(), bookId)) {
-            throw new IllegalArgumentException("已有该书目的未还借阅，不能预约");
-        }
+        String restriction = readerReservationRestriction(reader.getId(), bookId);
+        if (restriction != null) throw new IllegalArgumentException(restriction);
         if (reservations.existsByReaderIdAndBookIdAndStatusIn(reader.getId(), bookId, ACTIVE_STATUSES)) {
             throw new IllegalArgumentException("已存在该书目的有效预约");
         }
@@ -112,6 +105,51 @@ public class ReservationService {
         auditLogs.recordCurrent(account.getId(), UserRole.READER, "RESERVATION_CREATED", "RESERVATION",
                 reservation.getId(), "提交图书预约");
         return reservation;
+    }
+
+    @Transactional(readOnly = true)
+    public BookReservationOffer offerForReader(Long authenticatedReaderUserId, CatalogBookDetail detail) {
+        if (authenticatedReaderUserId == null) throw new AccessDeniedException("需要有效的读者身份");
+        AppUser account = users.findById(authenticatedReaderUserId)
+                .filter(user -> user.getRole() == UserRole.READER && user.getStatus() == UserStatus.ACTIVE)
+                .orElseThrow(() -> new AccessDeniedException("当前账号不是有效读者"));
+        ReaderProfile reader = readers.findByUserId(account.getId()).orElse(null);
+        if (reader == null) return new BookReservationOffer(false, "请联系馆员完善读者档案后再预约。");
+
+        Long bookId = detail.book().getId();
+        var active = reservations.findActiveReferencesByReaderAndBook(reader.getId(), bookId, ACTIVE_STATUSES);
+        if (!active.isEmpty()) {
+            ReservationReference existing = active.get(0);
+            if (existing.status() == ReservationStatus.READY) {
+                String message = existing.holdExpiresAt().isAfter(reservationTime())
+                        ? "这本书已为你保留，请在“我的预约”查看取书截止时间并到馆领取。"
+                        : "此前的到书保留已到期，系统正在更新预约状态，请稍后刷新。";
+                return new BookReservationOffer(false, message);
+            }
+            return new BookReservationOffer(false, "你已加入这本书的预约队列，可在“我的预约”查看排队进度。");
+        }
+        if (detail.copies().isEmpty()) {
+            return new BookReservationOffer(false, "这本书暂无可流通馆藏，暂不能预约。");
+        }
+        if (detail.availableCount() > 0) {
+            return new BookReservationOffer(false, "这本书当前有可借馆藏，请到馆办理借阅，无需预约。");
+        }
+        String restriction = readerReservationRestriction(reader.getId(), bookId);
+        if (restriction != null) return new BookReservationOffer(false, restriction);
+        return new BookReservationOffer(true, "当前没有可借馆藏，你可以加入预约队列。到书后保留 72 小时，请在截止前到馆领取。");
+    }
+
+    private String readerReservationRestriction(Long readerId, Long bookId) {
+        if (loans.existsByReader_IdAndReturnedAtIsNullAndDueDateBefore(readerId, loanRules.today())) {
+            return "存在逾期未还借阅，不能预约";
+        }
+        if (loans.countByReader_IdAndReturnedAtIsNull(readerId) >= loanRules.policy().maximumActiveLoans()) {
+            return "当前借阅数量已达到上限，不能预约";
+        }
+        if (loans.existsByReader_IdAndReturnedAtIsNullAndCopy_Book_Id(readerId, bookId)) {
+            return "已有该书目的未还借阅，不能预约";
+        }
+        return null;
     }
 
     @Transactional

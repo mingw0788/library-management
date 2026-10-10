@@ -5,18 +5,17 @@
     <title>书目管理 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">管理员与馆员</p><h1 class="hero-title">书目资料</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。ISBN 会去除空格和连字符并验证校验位；留空表示没有 ISBN。归档会保留书目历史。</p>
         <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
         <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
-        <form method="get" th:action="@{/staff/books}">
-            <label for="book-query">按书名、作者或 ISBN 查找</label><br>
-            <input id="book-query" name="q" maxlength="100" th:value="${query}">
-            <button type="submit">查询</button><a th:href="@{/staff/books}">显示全部</a>
-        </form>
+        <form th:replace="~{fragments/management-list :: filter('按书名、作者或 ISBN 查找')}"></form>
         <form method="post" th:action="@{/staff/books}">
+                <th:block th:replace="~{fragments/management-list :: returnFilters}"></th:block>
             <h2 class="card-title">新增书目</h2>
             <p><label for="new-book-title">书名</label><br><input id="new-book-title" name="title" required maxlength="200" th:value="${formKey == 'BOOK_CREATE' and formValues != null ? formValues['title'] : ''}" th:attr="aria-invalid=${formKey == 'BOOK_CREATE' and fieldErrors != null and fieldErrors.containsKey('title')},aria-describedby=${formKey == 'BOOK_CREATE' and fieldErrors != null and fieldErrors.containsKey('title') ? 'BOOK_CREATE-title-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError('BOOK_CREATE', 'title')}"></span></p>
             <p><label for="new-book-author">作者</label><br><input id="new-book-author" name="author" required maxlength="200" th:value="${formKey == 'BOOK_CREATE' and formValues != null ? formValues['author'] : ''}" th:attr="aria-invalid=${formKey == 'BOOK_CREATE' and fieldErrors != null and fieldErrors.containsKey('author')},aria-describedby=${formKey == 'BOOK_CREATE' and fieldErrors != null and fieldErrors.containsKey('author') ? 'BOOK_CREATE-author-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError('BOOK_CREATE', 'author')}"></span></p>
@@ -34,6 +33,7 @@
     </section>
     <section class="info-card">
         <h2 class="card-title">书目列表</h2>
+        <nav th:replace="~{fragments/management-list :: pagination}"></nav>
         <p><a th:href="@{/staff/copies}">管理实体副本</a></p>
         <p th:if="${#lists.isEmpty(books)}">没有匹配的书目。</p>
         <article th:each="book : ${books}" class="reader-row">
@@ -41,6 +41,7 @@
             <div th:with="inventory=${copyInventory[book.id]}"><p>副本数量：可借 <span th:text="${inventory.available}"></span> · 借出 <span th:text="${inventory.onLoan}"></span> · 预约保留 <span th:text="${inventory.held}"></span> · 已注销 <span th:text="${inventory.withdrawn}"></span> · 合计 <span th:text="${inventory.total()}"></span></p></div>
             <p th:if="${book.status.name() == 'ACTIVE'}">编辑书目资料时请使用当前版本；如果他人先提交了修改，旧版本会被拒绝。</p>
             <form method="post" th:if="${book.status.name() == 'ACTIVE'}" th:action="@{/staff/books/{id}/update(id=${book.id})}">
+                <th:block th:replace="~{fragments/management-list :: returnFilters}"></th:block>
                 <input type="hidden" name="version" th:value="${book.version}">
                 <p><label th:for="${'book-title-' + book.id}">书名</label><br><input th:id="${'book-title-' + book.id}" name="title" required maxlength="200" th:value="${formKey == 'BOOK_UPDATE_' + book.id and formValues != null ? formValues['title'] : book.title}" th:attr="aria-invalid=${formKey == 'BOOK_UPDATE_' + book.id and fieldErrors != null and fieldErrors.containsKey('title')},aria-describedby=${formKey == 'BOOK_UPDATE_' + book.id and fieldErrors != null and fieldErrors.containsKey('title') ? 'BOOK_UPDATE_' + book.id + '-title-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError(${ 'BOOK_UPDATE_' + book.id }, 'title')}"></span></p>
                 <p><label th:for="${'book-author-' + book.id}">作者</label><br><input th:id="${'book-author-' + book.id}" name="author" required maxlength="200" th:value="${formKey == 'BOOK_UPDATE_' + book.id and formValues != null ? formValues['author'] : book.author}" th:attr="aria-invalid=${formKey == 'BOOK_UPDATE_' + book.id and fieldErrors != null and fieldErrors.containsKey('author')},aria-describedby=${formKey == 'BOOK_UPDATE_' + book.id and fieldErrors != null and fieldErrors.containsKey('author') ? 'BOOK_UPDATE_' + book.id + '-author-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError(${ 'BOOK_UPDATE_' + book.id }, 'author')}"></span></p>
@@ -57,10 +58,12 @@
             <p><span>出版日期：</span><span th:text="${book.publishedDate}"></span> · ISBN <span th:text="${book.isbn}"></span></p>
             <p><span>简介：</span><span th:text="${book.description}"></span></p>
             <form method="post" th:if="${book.status.name() == 'ACTIVE'}" th:action="@{/staff/books/{id}/archive(id=${book.id})}">
+                <th:block th:replace="~{fragments/management-list :: returnFilters}"></th:block>
                 <button type="submit">归档书目</button>
             </form>
             <p th:if="${book.status.name() == 'ARCHIVED'}">该书目已归档，资料保留供工作人员查阅。</p>
         </article>
+        <nav th:replace="~{fragments/management-list :: pagination}"></nav>
         <p><a th:href="@{/staff}">返回工作人员工作区</a></p>
     </section>
 </main></body></html>

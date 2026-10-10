@@ -1,6 +1,7 @@
 package com.example.library.controller;
 
 import com.example.library.dashboard.DashboardStatisticsService;
+import com.example.library.dashboard.ReaderReminderService;
 import com.example.library.security.CurrentIdentity;
 import com.example.library.security.CurrentIdentityService;
 import org.springframework.stereotype.Controller;
@@ -12,10 +13,13 @@ public class WorkspaceController {
 
     private final CurrentIdentityService currentIdentity;
     private final DashboardStatisticsService dashboardStatistics;
+    private final ReaderReminderService reminders;
 
-    public WorkspaceController(CurrentIdentityService currentIdentity, DashboardStatisticsService dashboardStatistics) {
+    public WorkspaceController(CurrentIdentityService currentIdentity, DashboardStatisticsService dashboardStatistics,
+                                ReaderReminderService reminders) {
         this.currentIdentity = currentIdentity;
         this.dashboardStatistics = dashboardStatistics;
+        this.reminders = reminders;
     }
 
     @GetMapping("/admin")
@@ -36,10 +40,11 @@ public class WorkspaceController {
 
     @GetMapping("/reader")
     public String readerWorkspace(Model model) {
-        currentIdentity.requireReaderUserId();
+        Long readerUserId = currentIdentity.requireReaderUserId();
         CurrentIdentity identity = currentIdentity.requireCurrentIdentity();
         model.addAttribute("loginName", identity.loginName());
         model.addAttribute("readerStats", dashboardStatistics.readerStatistics());
+        model.addAttribute("readerReminders", reminders.forReader(readerUserId));
         return "workspace/reader";
     }
 }

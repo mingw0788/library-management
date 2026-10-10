@@ -5,14 +5,16 @@
     <title>我的借阅记录 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">读者工作区</p>
         <h1 class="hero-title">我的借阅记录</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。这里只显示与当前登录读者档案关联的借阅。</p>
-        <p th:if="${notice}" th:text="${notice}" role="status"></p>
-        <p th:if="${error}" th:text="${error}" role="alert"></p>
-        <form method="get" th:action="@{/reader/loans}">
+        <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
+        <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
+        <form class="loan-filters" method="get" th:action="@{/reader/loans}">
             <p><label for="state">借阅状态</label><br>
                 <select id="state" name="state">
                     <option value="CURRENT" th:selected="${state == 'CURRENT'}">当前未还</option>
@@ -21,25 +23,30 @@
                 </select></p>
             <p><label for="from-date">借出日期从</label><br><input id="from-date" type="date" name="fromDate" th:value="${fromDate}"></p>
             <p><label for="to-date">到</label><br><input id="to-date" type="date" name="toDate" th:value="${toDate}"></p>
-            <button type="submit">筛选</button>
+            <div class="filter-actions"><button type="submit">筛选</button><a th:href="@{/reader/loans}">重置筛选</a></div>
         </form>
-        <p th:if="${loanPage.empty}">没有符合条件的借阅记录。</p>
-        <div th:unless="${loanPage.empty}" class="table-scroll">
+        <p class="record-count" th:unless="${error}">找到 <strong th:text="${loanPage.totalElements}"></strong> 条记录 · 每页 10 条</p>
+        <div class="record-empty" th:if="${loanPage.empty and error == null}"><h2>没有符合条件的借阅记录</h2><p>默认显示当前未还；查看历史请选择“已归还”或“全部记录”，也可重置日期条件。</p><a th:href="@{/reader/loans(state='ALL')}">查看全部借阅记录</a></div>
+        <div th:unless="${loanPage.empty}" class="table-scroll record-table" tabindex="0" aria-label="记录列表">
             <table>
                 <thead><tr><th>图书</th><th>借出时间</th><th>应还日期</th><th>归还时间</th><th>状态</th><th>操作</th></tr></thead>
                 <tbody>
                 <tr th:each="loan : ${loanPage.content}">
-                    <td><span th:text="${loan.bookTitle}"></span><br><small th:text="${loan.barcode}"></small></td>
-                    <td th:text="${loan.borrowedAt}"></td><td th:text="${loan.dueDate}"></td>
-                    <td th:text="${loan.returnedAt == null ? '未归还' : loan.returnedAt}"></td>
-                    <td><span th:if="${loan.overdue}">当前逾期</span><span th:if="${loan.returnedLate}">逾期归还</span><span th:if="${!loan.overdue and !loan.returnedLate and loan.returnedAt == null}">借阅中</span><span th:if="${!loan.returnedLate and loan.returnedAt != null}">已归还</span></td>
-                    <td>
+                    <td data-label="图书"><span th:text="${loan.bookTitle}"></span><br><small th:text="${loan.barcode}"></small></td>
+                    <td data-label="借出时间" th:text="${loan.borrowedAt}"></td><td data-label="应还日期" th:text="${loan.dueDate}"></td>
+                    <td data-label="归还时间" th:text="${loan.returnedAt == null ? '未归还' : loan.returnedAt}"></td>
+                    <td data-label="状态"><span th:replace="~{fragments/loan-status :: status(${loan})}"></span></td>
+                    <td data-label="操作">
                         <form th:if="${loan.renewalAvailable}"
-                              method="post" th:action="@{/reader/loans/{id}/renew(id=${loan.loanId})}">
+                              method="post" data-confirm="确认续借这本图书 14 天？每笔借阅只能续借一次。" th:action="@{/reader/loans/{id}/renew(id=${loan.loanId})}">
+                            <input type="hidden" name="listState" th:value="${state}"><input type="hidden" name="listPage" th:value="${loanPage.number}">
+                            <input type="hidden" name="listFromDate" th:value="${fromDate}"><input type="hidden" name="listToDate" th:value="${toDate}">
                             <button type="submit">续借 14 天</button>
                         </form>
                         <span th:if="${loan.returnedAt == null and loan.renewCount > 0}">已续借</span>
-                        <span th:if="${loan.overdue}">逾期不可续借</span>
+                        <span th:if="${loan.overdue}">逾期不可续借，请到馆归还</span>
+                        <span th:if="${loan.returnedAt == null and loan.renewCount == 0 and !loan.overdue and !loan.renewalAvailable}">请先归还其他逾期图书</span>
+                        <span th:if="${loan.returnedAt != null}">已结束</span>
                     </td>
                 </tr>
                 </tbody>

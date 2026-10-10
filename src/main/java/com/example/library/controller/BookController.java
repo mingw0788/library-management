@@ -9,6 +9,12 @@ import com.example.library.catalog.CategoryService;
 import com.example.library.security.CurrentIdentity;
 import com.example.library.security.CurrentIdentityService;
 import com.example.library.web.FormFeedback;
+import com.example.library.web.ManagementSearch;
+import com.example.library.web.ManagementReturn;
+import com.example.library.web.ManagementListModel;
+import com.example.library.catalog.ManagementQueryService;
+import org.springframework.data.domain.Page;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Controller;
@@ -30,27 +36,35 @@ public class BookController {
     private final BookCopyService copies;
     private final CategoryService categories;
     private final CurrentIdentityService currentIdentity;
+    private final ManagementQueryService lists;
 
     public BookController(BookService books, BookCopyService copies, CategoryService categories,
-                          CurrentIdentityService currentIdentity) {
+                          CurrentIdentityService currentIdentity, ManagementQueryService lists) {
         this.books = books;
         this.copies = copies;
         this.categories = categories;
         this.currentIdentity = currentIdentity;
+        this.lists = lists;
     }
 
     @GetMapping("/staff/books")
-    public String books(@RequestParam(required = false) String q, Model model) {
+    public String books(@RequestParam(required = false) String q,
+                         @RequestParam(required = false) String status,
+                         @RequestParam(defaultValue = "0") String page, Model model) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
         model.addAttribute("loginName", actor.loginName());
-        model.addAttribute("query", q == null ? "" : q.trim());
         model.addAttribute("categories", categories.search(actor.role(), null));
         try {
-            List<Book> results = books.search(actor.role(), q);
+            ManagementSearch search = ManagementSearch.parse(q, status, page, ManagementQueryService.BOOK_STATES);
+            Page<Book> result = lists.books(actor.role(), search);
+            ManagementListModel.apply(model, search, result, "/staff/books", ManagementQueryService.BOOK_STATES);
+            List<Book> results = result.getContent();
             model.addAttribute("books", results);
             model.addAttribute("copyInventory", copies.inventoryByBookIds(
                     results.stream().map(Book::getId).toList()));
         } catch (IllegalArgumentException exception) {
+            ManagementListModel.apply(model, new ManagementSearch("", "ALL", 0), Page.empty(),
+                    "/staff/books", ManagementQueryService.BOOK_STATES);
             model.addAttribute("books", List.of());
             model.addAttribute("copyInventory", java.util.Map.of());
             model.addAttribute("error", exception.getMessage());
@@ -66,9 +80,9 @@ public class BookController {
                          @RequestParam(required = false) String isbn,
                          @RequestParam(required = false) Long categoryId,
                          @RequestParam(required = false) String description,
-                         RedirectAttributes redirect) {
+                         @ModelAttribute ManagementReturn listReturn, RedirectAttributes redirect) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
-        return performForm("/staff/books", "BOOK_CREATE",
+        return performForm(listReturn.target("/staff/books", ManagementQueryService.BOOK_STATES), "BOOK_CREATE",
                 FormFeedback.safeValues("title", title, "author", author, "publisher", publisher,
                         "publishedDate", publishedDate, "isbn", isbn, "categoryId", categoryId,
                         "description", description), redirect,
@@ -85,10 +99,10 @@ public class BookController {
                          @RequestParam(required = false) String isbn,
                          @RequestParam(required = false) Long categoryId,
                          @RequestParam(required = false) String description,
-                         RedirectAttributes redirect) {
+                         @ModelAttribute ManagementReturn listReturn, RedirectAttributes redirect) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
         String formKey = "BOOK_UPDATE_" + id;
-        return performForm("/staff/books", formKey,
+        return performForm(listReturn.target("/staff/books", ManagementQueryService.BOOK_STATES), formKey,
                 FormFeedback.safeValues("version", version, "title", title, "author", author,
                         "publisher", publisher, "publishedDate", publishedDate, "isbn", isbn,
                         "categoryId", categoryId, "description", description), redirect,
@@ -101,9 +115,9 @@ public class BookController {
     }
 
     @PostMapping("/staff/books/{id}/archive")
-    public String archive(@PathVariable Long id, RedirectAttributes redirect) {
+    public String archive(@PathVariable Long id, @ModelAttribute ManagementReturn listReturn, RedirectAttributes redirect) {
         CurrentIdentity actor = currentIdentity.requireCurrentIdentity();
-        return perform("/staff/books", redirect, () -> books.archive(actor.role(), id));
+        return perform(listReturn.target("/staff/books", ManagementQueryService.BOOK_STATES), redirect, () -> books.archive(actor.role(), id));
     }
 
     private static String perform(String target, RedirectAttributes redirect, Runnable operation) {

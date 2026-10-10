@@ -7,14 +7,15 @@
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
 <body>
-<main class="page-shell">
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">读者工作区</p>
         <h1 class="hero-title">我的图书</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。可查看本人当前借阅和历史记录。</p>
-        <p><a th:href="@{/account/profile}">本人资料</a>　<a th:href="@{/account/password}">修改密码</a>　<a th:href="@{/reader/loans}">我的借阅记录</a>　<a th:href="@{/catalog}">检索馆藏图书</a>　<a th:href="@{/}">返回首页</a></p>
     </section>
     <div th:replace="~{workspace/dashboard-fragments :: readerStatistics(${readerStats})}"></div>
+    <section th:replace="~{fragments/reader-reminders :: reminders}"></section>
 </main>
 </body>
 </html>

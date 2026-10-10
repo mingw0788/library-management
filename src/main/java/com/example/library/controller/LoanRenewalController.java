@@ -3,12 +3,16 @@ package com.example.library.controller;
 import com.example.library.loan.Loan;
 import com.example.library.loan.LoanRenewalService;
 import com.example.library.security.CurrentIdentityService;
+import com.example.library.web.LoanListReturn;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.Map;
 
 @Controller
 public class LoanRenewalController {
@@ -22,7 +26,8 @@ public class LoanRenewalController {
     }
 
     @PostMapping("/reader/loans/{loanId}/renew")
-    public String renew(@PathVariable Long loanId, RedirectAttributes redirect) {
+    public String renew(@PathVariable Long loanId, @RequestParam Map<String, String> parameters,
+                        RedirectAttributes redirect) {
         Long readerUserId = currentIdentity.requireReaderUserId();
         try {
             Loan loan = renewals.renewForReader(readerUserId, loanId);
@@ -34,6 +39,6 @@ public class LoanRenewalController {
         } catch (TransientDataAccessException exception) {
             redirect.addFlashAttribute("error", "该借阅正在被其他请求处理，请刷新页面后重试。");
         }
-        return "redirect:/reader/loans";
+        return "redirect:" + LoanListReturn.target(parameters);
     }
 }

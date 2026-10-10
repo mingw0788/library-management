@@ -92,6 +92,23 @@ class LoanModelTest {
     }
 
     @Test
+    void subMicrosecondBorrowAndReturnRoundTripWithoutDatabaseRoundingAhead() {
+        BookCopy copy = bookCopy("微秒时间精度 " + token());
+        Instant borrowed = Instant.parse("2026-10-10T01:00:00.234567750Z");
+        Loan saved = loans.saveAndFlush(new Loan(reader, copy, borrowed, rules.dueDateFor(borrowed), operator));
+        Instant stored = jdbc.queryForObject("SELECT borrowed_at FROM loan WHERE id = ?",
+                Timestamp.class, saved.getId()).toInstant();
+        assertEquals(Instant.parse("2026-10-10T01:00:00.234567Z"), stored);
+        Loan loaded = loans.findById(saved.getId()).orElseThrow();
+        assertThrows(IllegalArgumentException.class,
+                () -> loaded.returnTo(stored.minusNanos(1000), operator));
+        loaded.returnTo(Instant.parse("2026-10-10T01:00:00.234567900Z"), operator);
+        loans.saveAndFlush(loaded);
+        assertEquals(stored, jdbc.queryForObject("SELECT returned_at FROM loan WHERE id = ?",
+                Timestamp.class, saved.getId()).toInstant());
+    }
+
+    @Test
     void mysqlGeneratedUniqueKeyAllowsOnlyOneOpenLoanPerCopyAndAllowsReborrowAfterReturn() {
         BookCopy copy = bookCopy("唯一有效借阅 " + token());
         Instant borrowed = Instant.parse("2026-06-01T01:00:00Z");

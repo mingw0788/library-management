@@ -50,7 +50,7 @@ public class LoanReturnController {
                     ? returns.returnByLoanId(actor.userId(), actor.role(), loanId)
                     : returns.returnByBarcode(actor.userId(), actor.role(), barcode);
             redirect.addFlashAttribute("notice", "归还已办理。借阅编号：" + loan.getId()
-                    + "；副本已恢复为可借状态。");
+                    + "；副本状态已更新，有排队预约时将优先为预约读者保留。");
         } catch (IllegalArgumentException exception) {
             FormFeedback.failure(redirect, "LOAN_RETURN", exception.getMessage(),
                     FormFeedback.safeValues("loanId", loanId, "barcode", barcode), "loanId", "barcode");

@@ -20,6 +20,7 @@ import com.example.library.loan.Loan;
 import com.example.library.loan.LoanCheckoutService;
 import com.example.library.loan.LoanRules;
 import com.example.library.loan.LoanRepository;
+import com.example.library.loan.LoanReturnService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -73,6 +74,7 @@ class ReservationQueueTest {
     @Autowired private ReservationService reservations;
     @Autowired private ReservationRepository reservationRepository;
     @Autowired private LoanCheckoutService checkout;
+    @Autowired private LoanReturnService returns;
     @Autowired private LoanRepository loans;
     @Autowired private LoanRules loanRules;
     @Autowired private AccountService accounts;
@@ -311,6 +313,104 @@ class ReservationQueueTest {
 
         assertEquals(0L, jdbc.queryForObject("SELECT COUNT(*) FROM reservation WHERE reader_id = ? " +
                 "AND book_id = ?", Long.class, requester.profile().getId(), book.getId()));
+    }
+
+    @Test
+    void bookDetailCreatesForCurrentReaderAndShowsOwnProgressWithoutDuplicateRows() throws Exception {
+        ReaderFixture requester = reader();
+        ReaderFixture other = reader();
+        ReaderFixture borrower = reader();
+        Book book = book("详情预约 " + token());
+        checkout(book, borrower);
+        Book unrelated = book("忽略伪造参数 " + token());
+        MockHttpSession session = login(requester.account());
+        String action = "/reader/reservations/books/" + book.getId();
+        mvc.perform(get("/catalog/{id}", book.getId()).session(session))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("action=\"" + action + "\"")));
+        assertFalse(reservationRepository.existsByBookIdAndStatusIn(book.getId(), List.of(ReservationStatus.PENDING)));
+
+        var submitted = mvc.perform(post(action).with(csrf()).session(session)
+                        .param("bookId", unrelated.getId().toString())
+                        .param("readerUserId", other.account().getId().toString())
+                        .param("returnUrl", "https://example.invalid/"))
+                .andExpect(redirectedUrl("/catalog/" + book.getId() + "#reservation"))
+                .andExpect(flash().attribute("notice", containsString("已加入预约队列"))).andReturn();
+        Reservation row = reservationRepository.findByBookIdAndStatusOrderByCreatedAtAscIdAsc(book.getId(), ReservationStatus.PENDING).get(0);
+        assertEquals(requester.profile().getId(), row.getReaderId());
+        mvc.perform(get("/catalog/{id}", book.getId()).session(session).flashAttrs(submitted.getFlashMap()))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("已加入预约队列")))
+                .andExpect(content().string(containsString("你已加入这本书的预约队列")))
+                .andExpect(content().string(not(containsString("action=\"" + action + "\""))));
+        mvc.perform(post(action).with(csrf()).session(session))
+                .andExpect(redirectedUrl("/catalog/" + book.getId() + "#reservation"))
+                .andExpect(flash().attribute("error", containsString("有效预约")));
+        assertEquals(1, reservationRepository.findByBookIdAndStatusOrderByCreatedAtAscIdAsc(book.getId(), ReservationStatus.PENDING).size());
+        mvc.perform(get("/catalog/{id}", book.getId()).session(login(other.account())))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("action=\"" + action + "\"")))
+                .andExpect(content().string(not(containsString("你已加入这本书的预约队列"))));
+        reservations.cancelForReader(requester.account().getId(), row.getId());
+        mvc.perform(get("/catalog/{id}", book.getId()).session(session))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("action=\"" + action + "\"")));
+        mvc.perform(get("/reader/reservations").session(session))
+                .andExpect(content().string(containsString("从图书详情发起预约")))
+                .andExpect(content().string(not(containsString("name=\"bookId\""))));
+    }
+
+    @Test
+    void detailExplainsUnavailableChoicesAndSubmissionRechecksChangedInventory() throws Exception {
+        ReaderFixture requester = reader();
+        ReaderFixture borrower = reader();
+        Book book = book("馆藏变化 " + token());
+        Loan loan = checkout(book, borrower);
+        MockHttpSession session = login(requester.account());
+        String action = "/reader/reservations/books/" + book.getId();
+        mvc.perform(get("/catalog/{id}", book.getId()).session(session))
+                .andExpect(content().string(containsString("action=\"" + action + "\"")));
+        mvc.perform(get("/catalog/{id}", book.getId()).session(login(borrower.account())))
+                .andExpect(content().string(containsString("已有该书目的未还借阅")))
+                .andExpect(content().string(not(containsString("action=\"" + action + "\""))));
+        returns.returnByLoanId(librarian.getId(), UserRole.LIBRARIAN, loan.getId());
+        mvc.perform(post(action).with(csrf()).session(session))
+                .andExpect(redirectedUrl("/catalog/" + book.getId() + "#reservation"))
+                .andExpect(flash().attribute("error", containsString("当前有可借副本")));
+        mvc.perform(get("/catalog/{id}", book.getId()).session(session))
+                .andExpect(content().string(containsString("请到馆办理借阅，无需预约")))
+                .andExpect(content().string(not(containsString("action=\"" + action + "\""))));
+        Book noCopies = book("尚未入库 " + token());
+        mvc.perform(get("/catalog/{id}", noCopies.getId()).session(session))
+                .andExpect(content().string(containsString("暂无可流通馆藏，暂不能预约")))
+                .andExpect(content().string(not(containsString("action=\"/reader/reservations/books/"))));
+        assertFalse(reservationRepository.existsByBookIdAndStatusIn(book.getId(), List.of(ReservationStatus.PENDING)));
+    }
+
+    @Test
+    void bookReservationRouteRequiresReaderAndCsrfAndGetCannotCreate() throws Exception {
+        ReaderFixture requester = reader();
+        Book book = book("详情权限 " + token());
+        checkout(book, reader());
+        String action = "/reader/reservations/books/" + book.getId();
+        MockHttpSession session = login(requester.account());
+        MockHttpSession staffSession = login(librarian);
+        mvc.perform(post(action).with(csrf())).andExpect(status().is3xxRedirection());
+        mvc.perform(post(action).session(session)).andExpect(status().isForbidden());
+        mvc.perform(post(action).with(csrf()).session(staffSession)).andExpect(status().isForbidden());
+        mvc.perform(get(action).session(session)).andExpect(status().isMethodNotAllowed());
+        mvc.perform(get("/catalog/{id}", book.getId()).session(staffSession))
+                .andExpect(status().isOk()).andExpect(content().string(not(containsString("id=\"reservation\""))));
+        assertFalse(reservationRepository.existsByBookIdAndStatusIn(book.getId(), List.of(ReservationStatus.PENDING)));
+    }
+
+    @Test
+    void readyReservationIsShownAsHeldForCurrentReader() throws Exception {
+        ReaderFixture requester = reader();
+        Book book = book("详情到书保留 " + token());
+        Loan loan = checkout(book, reader());
+        Reservation created = reservations.createForReader(requester.account().getId(), book.getId());
+        returns.returnByLoanId(librarian.getId(), UserRole.LIBRARIAN, loan.getId());
+        assertEquals(ReservationStatus.READY, reservationRepository.findById(created.getId()).orElseThrow().getStatus());
+        mvc.perform(get("/catalog/{id}", book.getId()).session(login(requester.account())))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("这本书已为你保留")))
+                .andExpect(content().string(not(containsString("action=\"/reader/reservations/books/"))));
     }
 
     private List<Boolean> race(ReservationCall first, ReservationCall second) throws Exception {

@@ -2,34 +2,37 @@
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>预约队列（测试环境）· 图书管理系统</title>
+    <title>我的预约 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">读者服务</p>
         <h1 class="hero-title">预约队列</h1>
         <p class="hero-description">到书后系统为你保留 72 小时；请在截止时间前到馆办理取书。</p>
-        <p th:if="${notice}" th:text="${notice}" role="status"></p>
-        <p th:if="${error}" th:text="${error}" role="alert"></p>
-        <form method="post" th:action="@{/reader/reservations}">
-            <p><label for="book-id">书目编号</label><br>
-                <input id="book-id" name="bookId" type="number" min="1" required>
-                <button type="submit">提交预约</button></p>
-        </form>
-        <p th:if="${#lists.isEmpty(reservations)}">目前没有预约记录。</p>
-        <div th:unless="${#lists.isEmpty(reservations)}" class="table-scroll">
+        <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
+        <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
+        <div class="reservation-guide">
+            <h2 class="card-title">从图书详情发起预约</h2>
+            <p>先在馆藏目录找到想读的书，再进入详情页查看预约条件并提交，无需填写书目编号。</p>
+            <a class="home-button" th:href="@{/catalog}">浏览馆藏，选择图书 <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="record-empty" th:if="${#lists.isEmpty(reservations)}"><h2>还没有预约记录</h2><p>找到暂时无法借阅的图书后，可在详情页查看预约条件。</p><a th:href="@{/catalog}">去馆藏目录找书</a></div>
+        <p class="record-count">共 <strong th:text="${#lists.size(reservations)}"></strong> 条 · 时间以 <span th:text="${@displayTime.zone()}"></span> 为准</p>
+        <div th:unless="${#lists.isEmpty(reservations)}" class="table-scroll record-table" tabindex="0" aria-label="记录列表">
             <table>
                 <thead><tr><th>书目</th><th>状态</th><th>排队位置</th><th>提交时间</th><th>操作</th></tr></thead>
                 <tbody>
                 <tr th:each="reservation : ${reservations}">
-                    <td th:text="${reservation.bookTitle}"></td>
-                    <td th:text="${reservation.status.name() == 'PENDING' ? '排队中' : (reservation.status.name() == 'READY' ? '已到书，等待取书' : (reservation.status.name() == 'FULFILLED' ? '已取书' : (reservation.status.name() == 'EXPIRED' ? '已过期' : '已取消')))}"></td>
-                    <td th:text="${reservation.queuePosition == null ? '—' : reservation.queuePosition}"></td>
-                    <td><span th:text="${reservation.createdAt}"></span>
-                        <span th:if="${reservation.holdExpiresAt != null}"> · 请于 <span th:text="${reservation.holdExpiresAt}"></span> 前取书</span></td>
-                    <td>
-                        <form th:if="${reservation.status.name() == 'PENDING' or reservation.status.name() == 'READY'}" method="post"
+                    <td data-label="书目"><a th:href="@{/catalog/{id}(id=${reservation.bookId})}" th:text="${reservation.bookTitle}"></a></td>
+                    <td data-label="状态"><span class="record-status" th:classappend="${reservation.status.name() == 'READY' ? 'record-status-warning' : (reservation.status.name() == 'PENDING' ? '' : 'record-status-muted')}" th:text="${reservation.status.name() == 'PENDING' ? '排队中' : (reservation.status.name() == 'READY' ? '已到书，等待取书' : (reservation.status.name() == 'FULFILLED' ? '已取书' : (reservation.status.name() == 'EXPIRED' ? '已过期' : '已取消')))}"></span></td>
+                    <td data-label="排队位置" th:text="${reservation.queuePosition == null ? '—' : reservation.queuePosition}"></td>
+                    <td data-label="提交时间"><span th:text="${@displayTime.format(reservation.createdAt)}"></span>
+                        <span class="hold-deadline" th:if="${reservation.status.name() == 'READY'}">请于 <span th:text="${@displayTime.format(reservation.holdExpiresAt)}"></span> 前取书</span></td>
+                    <td data-label="操作">
+                        <form th:if="${reservation.status.name() == 'PENDING' or reservation.status.name() == 'READY'}" method="post" data-confirm="确认取消预约？取消后原排队位置或取书保留将失效。"
                               th:action="@{/reader/reservations/{id}/cancel(id=${reservation.reservationId})}">
                             <button type="submit">取消预约</button>
                         </form>

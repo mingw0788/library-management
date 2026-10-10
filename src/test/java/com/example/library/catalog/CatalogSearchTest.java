@@ -107,6 +107,57 @@ class CatalogSearchTest {
     }
 
     @Test
+    void detailRoundTripRetainsEncodedFiltersSortAndActualPage() throws Exception {
+        String keyword = "中文 & 导航 " + token();
+        book(keyword + " A", "导航作者", null, fiction, null);
+        book(keyword + " B", "导航作者", null, fiction, null);
+        MockHttpSession session = login(reader);
+        var search = mvc.perform(get("/catalog").session(session).param("q", keyword)
+                        .param("categoryId", fiction.getId().toString()).param("sort", "titleDesc")
+                        .param("size", "1").param("page", "99"))
+                .andExpect(status().isOk()).andReturn();
+        var page = (org.springframework.data.domain.Page<?>) search.getModelAndView().getModel().get("booksPage");
+        assertEquals(1, page.getNumber());
+        Book selected = (Book) page.getContent().getFirst();
+        var matcher = java.util.regex.Pattern.compile("href=\"(/catalog/" + selected.getId() + "\\?[^\"]+)\"")
+                .matcher(search.getResponse().getContentAsString());
+        assertTrue(matcher.find());
+        String href = org.springframework.web.util.HtmlUtils.htmlUnescape(matcher.group(1));
+        var detail = mvc.perform(get(java.net.URI.create(href)).session(session))
+                .andExpect(status().isOk()).andReturn();
+        String back = (String) detail.getModelAndView().getModel().get("catalogReturnUrl");
+        assertTrue(back.startsWith("/catalog?"));
+        assertTrue(back.contains("%26"));
+        assertTrue(back.contains("page=1"));
+        var result = mvc.perform(get(java.net.URI.create(back)).session(session))
+                .andExpect(status().isOk()).andReturn();
+        assertEquals(keyword, result.getModelAndView().getModel().get("query"));
+        assertEquals(fiction.getId(), result.getModelAndView().getModel().get("categoryId"));
+        assertEquals("titleDesc", result.getModelAndView().getModel().get("sort"));
+        var restored = (org.springframework.data.domain.Page<?>) result.getModelAndView().getModel().get("booksPage");
+        assertEquals(1, restored.getSize());
+        assertEquals(1, restored.getNumber());
+        assertEquals(selected.getId(), ((Book) restored.getContent().getFirst()).getId());
+    }
+
+    @Test
+    void malformedBrowseContextFallsBackWithoutBreakingDetailsOrAllowingExternalReturn() throws Exception {
+        Book book = book("返回校验 " + token(), "作者", null, fiction, null);
+        MockHttpSession session = login(reader);
+        for (String[] invalid : List.of(new String[]{"page", "-1"}, new String[]{"page", "100001"},
+                new String[]{"size", "0"}, new String[]{"size", "101"}, new String[]{"size", "oops"},
+                new String[]{"categoryId", "-1"}, new String[]{"categoryId", "oops"},
+                new String[]{"sort", "https://example.com"}, new String[]{"q", "a".repeat(101)},
+                new String[]{"q", "test\u0001control"})) {
+            mvc.perform(get("/catalog/{id}", book.getId()).session(session).param(invalid[0], invalid[1]))
+                    .andExpect(status().isOk()).andExpect(model().attribute("catalogReturnUrl", "/catalog"));
+        }
+        mvc.perform(get("/catalog/{id}", book.getId()).session(session)
+                        .param("returnUrl", "https://example.com").param("redirect", "//example.com"))
+                .andExpect(status().isOk()).andExpect(model().attribute("catalogReturnUrl", "/catalog"));
+    }
+
+    @Test
     void pagingSortsStablyClampsPastEndAndLimitsPageSize() {
         String token = "PAGE" + token();
         Book alpha = book("A " + token, "Same Author", null, fiction, LocalDate.of(2020, 1, 1));

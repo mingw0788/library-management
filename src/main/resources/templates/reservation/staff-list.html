@@ -5,27 +5,30 @@
     <title>预约取书· 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">工作人员服务</p>
         <h1 class="hero-title">到书保留与取书</h1>
         <p class="hero-description">只显示仍在保留期内的预约。办理时请核对读者证号；系统会重新检查读者资格和保留截止时间。</p>
-        <p th:if="${notice}" th:text="${notice}" role="status"></p>
-        <p th:if="${error}" th:text="${error}" role="alert"></p>
-        <p th:if="${#lists.isEmpty(reservations)}">目前没有等待取书的预约。</p>
-        <div th:unless="${#lists.isEmpty(reservations)}" class="table-scroll">
+        <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
+        <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
+        <div class="record-empty" th:if="${#lists.isEmpty(reservations)}"><h2>目前没有等待取书的预约</h2><p>排队预约分配到副本后会出现在这里。可继续办理普通借还。</p><a th:href="@{/staff/loans/checkout}">办理借出</a></div>
+        <p class="record-count">共 <strong th:text="${#lists.size(reservations)}"></strong> 条 · 时间以 <span th:text="${@displayTime.zone()}"></span> 为准</p>
+        <div th:unless="${#lists.isEmpty(reservations)}" class="table-scroll record-table" tabindex="0" aria-label="记录列表">
             <table>
                 <thead><tr><th>书目</th><th>读者</th><th>读者证号</th><th>保留截止</th><th>办理</th></tr></thead>
                 <tbody>
                 <tr th:each="reservation : ${reservations}">
-                    <td th:text="${reservation.bookTitle}"></td>
-                    <td th:text="${reservation.readerName}"></td>
-                    <td th:text="${reservation.readerNo}"></td>
-                    <td th:text="${reservation.holdExpiresAt}"></td>
-                    <td>
-                        <form method="post" th:action="@{/staff/reservations/{id}/fulfill(id=${reservation.reservationId})}">
+                    <td data-label="书目" th:text="${reservation.bookTitle}"></td>
+                    <td data-label="读者" th:text="${reservation.readerName}"></td>
+                    <td data-label="读者证号" th:text="${reservation.readerNo}"></td>
+                    <td data-label="保留截止" th:text="${@displayTime.format(reservation.holdExpiresAt)}"></td>
+                    <td data-label="办理">
+                        <form method="post" data-confirm="已核对读者本人和实体图书，确认办理取书？" th:action="@{/staff/reservations/{id}/fulfill(id=${reservation.reservationId})}">
                             <label th:for="${'reader-no-' + reservation.reservationId}">核对读者证号</label>
-                            <input th:id="${'reader-no-' + reservation.reservationId}" name="readerNo" required maxlength="50">
+                            <input th:id="${'reader-no-' + reservation.reservationId}" name="readerNo" required maxlength="50" autocomplete="off" placeholder="输入读者出示的证号">
                             <button type="submit">确认取书</button>
                         </form>
                     </td>

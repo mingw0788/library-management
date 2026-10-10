@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<body>
+<header th:fragment="navigation" class="page-shell app-header">
+    <script defer th:src="@{/js/forms.js}" src="/js/forms.js"></script>
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <div class="app-header-top">
+        <a class="app-brand" th:href="@{/}" aria-label="图书管理系统首页">
+            <span class="app-brand-icon" aria-hidden="true">图</span>
+            <span class="app-brand-copy"><strong>图书管理系统</strong><small>找书 · 借还 · 馆藏</small></span>
+        </a>
+        <div class="app-account" th:if="${siteNav.authenticated}">
+            <span><strong th:text="${siteNav.loginName}"></strong> · <span th:text="${siteNav.roleLabel}"></span></span>
+            <a class="app-nav-link" th:href="@{/account/profile}"
+               th:attr="aria-current=${siteNav.currentPath == '/account/profile' ? 'page' : null}">本人资料</a>
+            <a class="app-nav-link" th:href="@{/account/password}"
+               th:attr="aria-current=${siteNav.currentPath == '/account/password' ? 'page' : null}">修改密码</a>
+            <form class="app-logout" method="post" th:action="@{/logout}">
+                <button class="app-logout-button" type="submit">退出登录</button>
+            </form>
+        </div>
+        <div class="app-account" th:unless="${siteNav.authenticated}">
+            <span>登录后查看馆藏与办理借阅</span>
+            <a class="app-nav-link" th:href="@{/login}">登录系统</a>
+        </div>
+    </div>
+    <nav class="app-nav app-nav-group" aria-label="主要导航">
+        <a class="app-nav-link" th:href="@{/}"
+           th:attr="aria-current=${siteNav.currentPath == '/' ? 'page' : null}">首页</a>
+        <a class="app-nav-link" th:href="@{/catalog}"
+           th:attr="aria-current=${siteNav.currentPath == '/catalog' or #strings.startsWith(siteNav.currentPath, '/catalog/') ? 'page' : null}">馆藏目录</a>
+        <a class="app-nav-link" th:if="${siteNav.authenticated}" th:href="@{${siteNav.workspacePath}}"
+           th:text="${siteNav.workspaceLabel}"
+           th:attr="aria-current=${siteNav.currentPath == siteNav.workspacePath ? 'page' : null}"></a>
+        <th:block th:if="${siteNav.role == 'ADMIN' or siteNav.role == 'LIBRARIAN'}">
+            <a class="app-nav-link" th:href="@{/staff/loans/checkout}"
+               th:attr="aria-current=${siteNav.currentPath == '/staff/loans/checkout' ? 'page' : null}">办理借出</a>
+            <a class="app-nav-link" th:href="@{/staff/loans/return}"
+               th:attr="aria-current=${siteNav.currentPath == '/staff/loans/return' ? 'page' : null}">办理归还</a>
+            <a class="app-nav-link" th:href="@{/staff/loans}"
+               th:attr="aria-current=${siteNav.currentPath == '/staff/loans' ? 'page' : null}">借阅记录</a>
+            <a class="app-nav-link" th:if="${siteNav.reservationsEnabled}" th:href="@{/staff/reservations}"
+               th:attr="aria-current=${siteNav.currentPath == '/staff/reservations' ? 'page' : null}">预约取书</a>
+        </th:block>
+        <th:block th:if="${siteNav.role == 'READER'}">
+            <a class="app-nav-link" th:href="@{/reader/loans}"
+               th:attr="aria-current=${siteNav.currentPath == '/reader/loans' ? 'page' : null}">我的借阅</a>
+            <a class="app-nav-link" th:if="${siteNav.reservationsEnabled}" th:href="@{/reader/reservations}"
+               th:attr="aria-current=${siteNav.currentPath == '/reader/reservations' ? 'page' : null}">我的预约</a>
+        </th:block>
+    </nav>
+    <nav class="app-nav app-nav-group" aria-label="馆务管理"
+         th:if="${siteNav.role == 'ADMIN' or siteNav.role == 'LIBRARIAN'}">
+        <a class="app-nav-link" th:href="@{/staff/readers}"
+           th:attr="aria-current=${siteNav.currentPath == '/staff/readers' ? 'page' : null}">读者管理</a>
+        <a class="app-nav-link" th:href="@{/staff/books}"
+           th:attr="aria-current=${siteNav.currentPath == '/staff/books' ? 'page' : null}">书目管理</a>
+        <a class="app-nav-link" th:href="@{/staff/copies}"
+           th:attr="aria-current=${siteNav.currentPath == '/staff/copies' ? 'page' : null}">馆藏副本</a>
+        <a class="app-nav-link" th:href="@{/staff/categories}"
+           th:attr="aria-current=${siteNav.currentPath == '/staff/categories' ? 'page' : null}">分类管理</a>
+        <th:block th:if="${siteNav.role == 'ADMIN'}">
+            <a class="app-nav-link" th:href="@{/admin/accounts}"
+               th:attr="aria-current=${siteNav.currentPath == '/admin/accounts' ? 'page' : null}">工作人员账号</a>
+            <a class="app-nav-link" th:href="@{/admin/audit}"
+               th:attr="aria-current=${siteNav.currentPath == '/admin/audit' ? 'page' : null}">操作审计</a>
+        </th:block>
+    </nav>
+</header>
+</body>
+</html>

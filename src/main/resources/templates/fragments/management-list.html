@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org"><body>
+<form th:fragment="filter(label)" class="management-filter" method="get" th:action="@{${listPath}}">
+    <div><label for="management-query" th:text="${label}"></label><input id="management-query" name="q" maxlength="100" th:value="${query}" placeholder="输入关键词"></div>
+    <div><label for="management-status">状态</label><select id="management-status" name="status">
+        <option th:each="state : ${listStates}" th:value="${state.key}" th:text="${state.value}" th:selected="${state.key == listStatus}"></option>
+    </select></div>
+    <div class="filter-actions"><button type="submit">查询</button><a th:href="@{${listPath}}">重置筛选</a></div>
+</form>
+<nav th:fragment="pagination" class="pagination management-pagination" aria-label="管理列表分页">
+    <span>共 <strong th:text="${resultPage.totalElements}"></strong> 条 · 第 <span th:text="${resultPage.number + 1}"></span> / <span th:text="${resultPage.totalPages == 0 ? 1 : resultPage.totalPages}"></span> 页 · 每页 10 条</span>
+    <a th:if="${resultPage.hasPrevious()}" th:href="@{${listPath}(q=${query},status=${listStatus},page=0)}">首页</a>
+    <a th:if="${resultPage.hasPrevious()}" th:href="@{${listPath}(q=${query},status=${listStatus},page=${resultPage.number - 1})}">上一页</a>
+    <a th:if="${resultPage.hasNext()}" th:href="@{${listPath}(q=${query},status=${listStatus},page=${resultPage.number + 1})}">下一页</a>
+    <a th:if="${resultPage.hasNext()}" th:href="@{${listPath}(q=${query},status=${listStatus},page=${resultPage.totalPages - 1})}">末页</a>
+</nav>
+<th:block th:fragment="returnFilters">
+    <input type="hidden" name="listQuery" th:value="${query}">
+    <input type="hidden" name="listStatus" th:value="${listStatus}">
+    <input type="hidden" name="listPage" th:value="${resultPage.number}">
+</th:block>
+</body></html>

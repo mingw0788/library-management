@@ -5,13 +5,17 @@
     <title>读者管理 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">管理员与馆员</p><h1 class="hero-title">读者账号与档案</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。读者证号创建后保持不变；初始或重置密码须由读者首次登录时修改。</p>
         <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
         <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
+        <form th:replace="~{fragments/management-list :: filter('按姓名、读者证号或登录名查找')}"></form>
         <form method="post" th:action="@{/staff/readers}">
+                <th:block th:replace="~{fragments/management-list :: returnFilters}"></th:block>
             <p><label for="reader-login-name">登录名</label><br><input id="reader-login-name" name="loginName" required minlength="3" maxlength="50" autocomplete="off" th:value="${formKey == 'READER_CREATE' and formValues != null ? formValues['loginName'] : ''}" th:attr="aria-invalid=${formKey == 'READER_CREATE' and fieldErrors != null and fieldErrors.containsKey('loginName')},aria-describedby=${formKey == 'READER_CREATE' and fieldErrors != null and fieldErrors.containsKey('loginName') ? 'READER_CREATE-loginName-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError('READER_CREATE', 'loginName')}"></span></p>
             <p><label for="reader-initial-password">初始密码</label><br><input id="reader-initial-password" name="initialPassword" type="password" required minlength="12" maxlength="64" autocomplete="new-password" th:attr="aria-invalid=${formKey == 'READER_CREATE' and fieldErrors != null and fieldErrors.containsKey('initialPassword')},aria-describedby=${formKey == 'READER_CREATE' and fieldErrors != null and fieldErrors.containsKey('initialPassword') ? 'READER_CREATE-initialPassword-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError('READER_CREATE', 'initialPassword')}"></span></p>
             <p><label for="reader-create-name">姓名</label><br><input id="reader-create-name" name="displayName" required maxlength="100" th:value="${formKey == 'READER_CREATE' and formValues != null ? formValues['displayName'] : ''}" th:attr="aria-invalid=${formKey == 'READER_CREATE' and fieldErrors != null and fieldErrors.containsKey('displayName')},aria-describedby=${formKey == 'READER_CREATE' and fieldErrors != null and fieldErrors.containsKey('displayName') ? 'READER_CREATE-displayName-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError('READER_CREATE', 'displayName')}"></span></p>
@@ -22,22 +26,27 @@
     </section>
     <section class="info-card">
         <h2 class="card-title">读者档案</h2>
-        <p th:if="${#lists.isEmpty(readers)}">暂无读者档案。</p>
+        <nav th:replace="~{fragments/management-list :: pagination}"></nav>
+        <p th:if="${#lists.isEmpty(readers)}">没有匹配的读者档案。</p>
         <div th:each="reader : ${readers}" class="reader-row">
             <p><strong th:text="${reader.displayName}"></strong> · 证号 <span th:text="${reader.readerNo}"></span> · <span th:text="${reader.status}"></span></p>
             <form method="post" th:action="@{/staff/readers/{id}/update(id=${reader.userId})}">
+                <th:block th:replace="~{fragments/management-list :: returnFilters}"></th:block>
                 <label th:for="${'reader-update-name-' + reader.userId}">姓名</label><br><input th:id="${'reader-update-name-' + reader.userId}" name="displayName" required maxlength="100" th:value="${formKey == 'READER_UPDATE_' + reader.userId and formValues != null ? formValues['displayName'] : reader.displayName}" th:attr="aria-invalid=${formKey == 'READER_UPDATE_' + reader.userId and fieldErrors != null and fieldErrors.containsKey('displayName')},aria-describedby=${formKey == 'READER_UPDATE_' + reader.userId and fieldErrors != null and fieldErrors.containsKey('displayName') ? 'READER_UPDATE_' + reader.userId + '-displayName-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError(${ 'READER_UPDATE_' + reader.userId }, 'displayName')}"></span>
                 <label th:for="${'reader-update-contact-' + reader.userId}">联系方式</label><br><input th:id="${'reader-update-contact-' + reader.userId}" name="contact" maxlength="100" th:value="${formKey == 'READER_UPDATE_' + reader.userId and formValues != null ? formValues['contact'] : reader.contact}" th:attr="aria-invalid=${formKey == 'READER_UPDATE_' + reader.userId and fieldErrors != null and fieldErrors.containsKey('contact')},aria-describedby=${formKey == 'READER_UPDATE_' + reader.userId and fieldErrors != null and fieldErrors.containsKey('contact') ? 'READER_UPDATE_' + reader.userId + '-contact-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError(${ 'READER_UPDATE_' + reader.userId }, 'contact')}"></span>
                 <button type="submit">保存资料</button>
             </form>
             <form method="post" th:action="@{/staff/readers/{id}/reset-password(id=${reader.userId})}">
+                <th:block th:replace="~{fragments/management-list :: returnFilters}"></th:block>
                 <label th:for="${'reader-reset-' + reader.userId}">新临时密码</label><br><input th:id="${'reader-reset-' + reader.userId}" name="newPassword" type="password" required minlength="12" maxlength="64" autocomplete="new-password" th:attr="aria-invalid=${formKey == 'READER_RESET_' + reader.userId and fieldErrors != null and fieldErrors.containsKey('newPassword')},aria-describedby=${formKey == 'READER_RESET_' + reader.userId and fieldErrors != null and fieldErrors.containsKey('newPassword') ? 'READER_RESET_' + reader.userId + '-newPassword-error' : null}"><span th:replace="~{fragments/form-feedback :: fieldError(${ 'READER_RESET_' + reader.userId }, 'newPassword')}"></span>
                 <button type="submit">重置密码</button>
             </form>
             <form method="post" th:if="${reader.status == 'ACTIVE'}" th:action="@{/staff/readers/{id}/disable(id=${reader.userId})}">
+                <th:block th:replace="~{fragments/management-list :: returnFilters}"></th:block>
                 <button type="submit">禁用账号</button>
             </form>
         </div>
+        <nav th:replace="~{fragments/management-list :: pagination}"></nav>
         <p><a th:href="@{/staff}">返回工作人员工作区</a></p>
     </section>
 </main></body></html>

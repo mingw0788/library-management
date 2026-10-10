@@ -5,13 +5,15 @@
     <title>借阅记录 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">管理员与馆员</p>
         <h1 class="hero-title">全馆借阅记录</h1>
         <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。可按读者、条码、借出日期和借阅状态筛选。</p>
-        <p th:if="${error}" th:text="${error}" role="alert"></p>
-        <form method="get" th:action="@{/staff/loans}">
+        <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
+        <form class="loan-filters" method="get" th:action="@{/staff/loans}">
             <p><label for="reader">读者证号或姓名</label><br><input id="reader" name="reader" maxlength="100" th:value="${reader}"></p>
             <p><label for="barcode">馆藏条码</label><br><input id="barcode" name="barcode" maxlength="50" th:value="${barcode}"></p>
             <p><label for="state">借阅状态</label><br>
@@ -22,20 +24,21 @@
                 </select></p>
             <p><label for="from-date">借出日期从</label><br><input id="from-date" type="date" name="fromDate" th:value="${fromDate}"></p>
             <p><label for="to-date">到</label><br><input id="to-date" type="date" name="toDate" th:value="${toDate}"></p>
-            <button type="submit">筛选</button>
+            <div class="filter-actions"><button type="submit">筛选</button><a th:href="@{/staff/loans}">重置筛选</a></div>
         </form>
-        <p th:if="${loanPage.empty}">没有符合条件的借阅记录。</p>
-        <div th:unless="${loanPage.empty}" class="table-scroll">
+        <p class="record-count" th:unless="${error}">找到 <strong th:text="${loanPage.totalElements}"></strong> 条记录 · 每页 10 条</p>
+        <div class="record-empty" th:if="${loanPage.empty and error == null}"><h2>没有符合条件的借阅记录</h2><p>默认显示当前未还；查看历史请选择“已归还”或“全部记录”，也可重置日期条件。</p><a th:href="@{/staff/loans(state='ALL')}">查看全部借阅记录</a></div>
+        <div th:unless="${loanPage.empty}" class="table-scroll record-table" tabindex="0" aria-label="记录列表">
             <table>
                 <thead><tr><th>读者</th><th>图书</th><th>借出时间</th><th>应还日期</th><th>归还时间</th><th>状态</th><th>经办人</th></tr></thead>
                 <tbody>
                 <tr th:each="loan : ${loanPage.content}">
-                    <td><span th:text="${loan.readerName}"></span><br><small th:text="${loan.readerNo}"></small></td>
-                    <td><span th:text="${loan.bookTitle}"></span><br><small th:text="${loan.barcode}"></small></td>
-                    <td th:text="${loan.borrowedAt}"></td><td th:text="${loan.dueDate}"></td>
-                    <td th:text="${loan.returnedAt == null ? '未归还' : loan.returnedAt}"></td>
-                    <td><span th:if="${loan.overdue}">当前逾期</span><span th:if="${loan.returnedLate}">逾期归还</span><span th:if="${!loan.overdue and !loan.returnedLate and loan.returnedAt == null}">借阅中</span><span th:if="${!loan.returnedLate and loan.returnedAt != null}">已归还</span></td>
-                    <td><span th:text="${loan.checkoutOperatorName}"></span><br><small th:if="${loan.returnOperatorName != null}" th:text="${loan.returnOperatorName}"></small></td>
+                    <td data-label="读者"><span th:text="${loan.readerName}"></span><br><small th:text="${loan.readerNo}"></small></td>
+                    <td data-label="图书"><span th:text="${loan.bookTitle}"></span><br><small th:text="${loan.barcode}"></small></td>
+                    <td data-label="借出时间" th:text="${loan.borrowedAt}"></td><td data-label="应还日期" th:text="${loan.dueDate}"></td>
+                    <td data-label="归还时间" th:text="${loan.returnedAt == null ? '未归还' : loan.returnedAt}"></td>
+                    <td data-label="状态"><span th:replace="~{fragments/loan-status :: status(${loan})}"></span></td>
+                    <td data-label="经办人"><span th:text="${loan.checkoutOperatorName}"></span><br><small th:if="${loan.returnOperatorName != null}" th:text="${loan.returnOperatorName}"></small></td>
                 </tr>
                 </tbody>
             </table>

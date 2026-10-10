@@ -38,6 +38,17 @@ public class ReservationController {
 
     @PostMapping
     public String create(@RequestParam Long bookId, RedirectAttributes redirect) {
+        submitReservation(bookId, redirect);
+        return "redirect:/reader/reservations";
+    }
+
+    @PostMapping("/books/{bookId}")
+    public String createFromBook(@PathVariable Long bookId, RedirectAttributes redirect) {
+        submitReservation(bookId, redirect);
+        return "redirect:/catalog/" + bookId + "#reservation";
+    }
+
+    private void submitReservation(Long bookId, RedirectAttributes redirect) {
         Long readerUserId = currentIdentity.requireReaderUserId();
         try {
             Reservation created = reservations.createForReader(readerUserId, bookId);
@@ -49,7 +60,6 @@ public class ReservationController {
         } catch (TransientDataAccessException exception) {
             redirect.addFlashAttribute("error", "预约请求正在处理中，请刷新页面后重试。");
         }
-        return "redirect:/reader/reservations";
     }
 
     @PostMapping("/{reservationId}/cancel")

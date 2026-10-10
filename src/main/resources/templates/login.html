@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
 <body>
-<main class="page-shell">
+<main class="page-shell auth-page">
+    <a class="auth-brand" th:href="@{/}">图书管理系统 <span aria-hidden="true">↗</span></a>
     <section class="hero" aria-labelledby="login-title">
         <p class="eyebrow">图书管理系统</p>
         <h1 class="hero-title" id="login-title">账号登录</h1>
@@ -29,6 +30,7 @@
             <button type="submit">登录</button>
         </form>
     </section>
+    <p class="auth-note">首次登录需修改初始密码。如忘记密码，请联系管理员。</p>
 </main>
 </body>
 </html>

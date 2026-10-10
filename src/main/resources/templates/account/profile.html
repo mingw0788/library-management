@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
 <body>
-<main class="page-shell">
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero" aria-labelledby="profile-title">
         <p class="eyebrow">账号设置</p>
         <h1 class="hero-title" id="profile-title">本人资料</h1>

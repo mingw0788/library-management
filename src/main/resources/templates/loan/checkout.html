@@ -5,23 +5,76 @@
     <title>办理借出 · 图书管理系统</title>
     <link rel="stylesheet" href="/css/library.css" th:href="@{/css/library.css}">
 </head>
-<body><main class="page-shell">
+<body>
+<header th:replace="~{fragments/navigation :: navigation}"></header>
+<main id="main-content" tabindex="-1" class="page-shell">
     <section class="hero">
         <p class="eyebrow">管理员与馆员</p>
         <h1 class="hero-title">办理借出</h1>
-        <p class="hero-description">当前账号：<span th:text="${loginName}"></span>。请核对读者证号和实体副本条码。系统会在提交时重新检查读者资格和副本状态。</p>
+        <p class="hero-description">搜索读者和实体副本，核对信息后办理借出。当前账号：<span th:text="${loginName}"></span>。</p>
         <p class="message-success" th:if="${notice}" th:text="${notice}" role="status"></p>
         <p class="message-error" th:if="${error}" th:text="${error}" role="alert"></p>
-        <form method="post" th:action="@{/staff/loans/checkout}">
-            <p><label for="reader-no">读者证号</label><br>
-                <input id="reader-no" name="readerNo" required maxlength="50" autocomplete="off" th:value="${formKey == 'LOAN_CHECKOUT' and formValues != null ? formValues['readerNo'] : ''}" th:attr="aria-invalid=${formKey == 'LOAN_CHECKOUT' and fieldErrors != null and fieldErrors.containsKey('readerNo')},aria-describedby=${formKey == 'LOAN_CHECKOUT' and fieldErrors != null and fieldErrors.containsKey('readerNo') ? 'LOAN_CHECKOUT-readerNo-error' : null}">
-                <span th:replace="~{fragments/form-feedback :: fieldError('LOAN_CHECKOUT', 'readerNo')}"></span></p>
-            <p><label for="copy-barcode">馆藏条码</label><br>
-                <input id="copy-barcode" name="barcode" required maxlength="50" autocomplete="off" th:value="${formKey == 'LOAN_CHECKOUT' and formValues != null ? formValues['barcode'] : ''}" th:attr="aria-invalid=${formKey == 'LOAN_CHECKOUT' and fieldErrors != null and fieldErrors.containsKey('barcode')},aria-describedby=${formKey == 'LOAN_CHECKOUT' and fieldErrors != null and fieldErrors.containsKey('barcode') ? 'LOAN_CHECKOUT-barcode-error' : null}">
-                <span th:replace="~{fragments/form-feedback :: fieldError('LOAN_CHECKOUT', 'barcode')}"></span></p>
-            <button type="submit">确认借出</button>
-        </form>
-        <p>默认借期 14 天；读者最多同时借阅 5 册。有未还逾期记录或同一书目未归还时不能再次借阅。</p>
+        <p class="message-error" th:if="${selectionError}" th:text="${selectionError}" role="alert"></p>
+    </section>
+    <div class="checkout-grid">
+        <section class="checkout-panel" aria-labelledby="reader-heading">
+            <p class="eyebrow">第一步</p><h2 id="reader-heading">选择读者</h2>
+            <p class="checkout-selected" th:if="${selectedReader != null}">已选：<strong th:text="${selectedReader.displayName}"></strong><br><span th:text="${selectedReader.readerNo}"></span></p>
+            <form method="get" th:action="@{/staff/loans/checkout}">
+                <input type="hidden" name="readerNo" th:value="${selectedReaderNo}">
+                <input type="hidden" name="barcode" th:value="${selectedBarcode}">
+                <input type="hidden" name="bookQuery" th:value="${bookQuery}">
+                <label for="reader-query">姓名或读者证号</label>
+                <div class="checkout-search"><input id="reader-query" name="readerQuery" maxlength="100" th:value="${readerQuery}" placeholder="例如：DEMO-R003" autocomplete="off"><button type="submit">搜索读者</button></div>
+            </form>
+            <p class="muted">仅显示启用的读者，最多 20 条；结果较多时请补充关键词。</p>
+            <p th:if="${readerQuery != '' and #lists.isEmpty(readerChoices)}">未找到匹配读者，请核对姓名或证号。</p>
+            <ul class="checkout-choices" th:if="${not #lists.isEmpty(readerChoices)}">
+                <li th:each="choice : ${readerChoices}"><div><strong th:text="${choice.displayName}"></strong><span th:text="${choice.readerNo}"></span></div>
+                    <a class="button secondary" th:href="@{/staff/loans/checkout(readerNo=${choice.readerNo},barcode=${selectedBarcode},readerQuery=${readerQuery},bookQuery=${bookQuery})}" th:attr="aria-label=${'选择读者：' + choice.displayName + '，' + choice.readerNo}">选择读者</a></li>
+            </ul>
+        </section>
+        <section class="checkout-panel" aria-labelledby="copy-heading">
+            <p class="eyebrow">第二步</p><h2 id="copy-heading">选择图书副本</h2>
+            <p class="checkout-selected" th:if="${selectedCopy != null}">已选：<strong th:text="${selectedCopy.title}"></strong><br><span th:text="${selectedCopy.barcode}"></span></p>
+            <form method="get" th:action="@{/staff/loans/checkout}">
+                <input type="hidden" name="readerNo" th:value="${selectedReaderNo}">
+                <input type="hidden" name="barcode" th:value="${selectedBarcode}">
+                <input type="hidden" name="readerQuery" th:value="${readerQuery}">
+                <label for="book-query">书名、作者或馆藏条码</label>
+                <div class="checkout-search"><input id="book-query" name="bookQuery" maxlength="100" th:value="${bookQuery}" placeholder="可扫描或输入实体书条码" autocomplete="off"><button type="submit">搜索图书</button></div>
+            </form>
+            <p class="muted">仅显示可借副本，最多 20 条；每个条码对应一册实体书。</p>
+            <p th:if="${bookQuery != '' and #lists.isEmpty(copyChoices)}">未找到可借副本，请核对关键词或查看馆藏状态。</p>
+            <ul class="checkout-choices" th:if="${not #lists.isEmpty(copyChoices)}">
+                <li th:each="choice : ${copyChoices}"><div><strong th:text="${choice.title}"></strong><span th:text="${choice.author}"></span><span th:text="${choice.barcode}"></span><span th:text="${choice.shelfLocation ?: '馆藏位置未登记'}"></span></div>
+                    <a class="button secondary" th:href="@{/staff/loans/checkout(readerNo=${selectedReaderNo},barcode=${choice.barcode},readerQuery=${readerQuery},bookQuery=${bookQuery})}" th:attr="aria-label=${'选择副本：' + choice.title + '，' + choice.barcode}">选择副本</a></li>
+            </ul>
+        </section>
+    </div>
+    <section class="checkout-panel checkout-review" id="checkout-review" aria-labelledby="review-heading">
+        <p class="eyebrow">第三步</p><h2 id="review-heading">核对借阅信息</h2>
+        <p th:if="${selectedReader == null or selectedCopy == null}">请先选择读者和实体副本，核对信息后即可办理借出。</p>
+        <div th:if="${selectedReader != null and selectedCopy != null}">
+            <dl class="checkout-summary">
+                <div><dt>读者姓名</dt><dd th:text="${selectedReader.displayName}"></dd></div>
+                <div><dt>读者证号</dt><dd th:text="${selectedReader.readerNo}"></dd></div>
+                <div><dt>图书名称</dt><dd th:text="${selectedCopy.title}"></dd></div>
+                <div><dt>作者</dt><dd th:text="${selectedCopy.author}"></dd></div>
+                <div><dt>馆藏条码</dt><dd th:text="${selectedCopy.barcode}"></dd></div>
+                <div><dt>馆藏位置</dt><dd th:text="${selectedCopy.shelfLocation ?: '未登记'}"></dd></div>
+                <div><dt>预计应还日期</dt><dd th:text="${dueDate}"></dd></div>
+            </dl>
+            <p class="message-error" th:if="${checkoutRestriction}" th:text="${checkoutRestriction}" role="alert"></p>
+            <form th:if="${checkoutRestriction == null}" method="post" th:action="@{/staff/loans/checkout}">
+                <input type="hidden" name="readerNo" th:value="${selectedReader.readerNo}">
+                <input type="hidden" name="barcode" th:value="${selectedCopy.barcode}">
+                <label class="checkout-confirm"><input type="checkbox" name="informationChecked" required> 已核对读者证及实体书条码</label>
+                <button type="submit">确认借出</button>
+            </form>
+            <p class="muted">提交时重新检查资格和副本状态；实际应还日期以办理成功提示为准。</p>
+        </div>
+        <p>借期 <span th:text="${loanPeriodDays}"></span> 天；最多同时借阅 <span th:text="${maximumActiveLoans}"></span> 册。有未还逾期或同一书目未归还时不能再次借阅。</p>
         <p><a th:href="@{/staff/loans}">借阅记录</a>　<a th:href="@{/staff/loans/return}">办理归还</a>　<a th:href="@{/staff/copies}">查看实体副本</a>　<a th:href="@{/staff}">返回工作人员工作区</a></p>
     </section>
 </main></body></html>

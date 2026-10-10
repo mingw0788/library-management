@@ -29,6 +29,6 @@ public class MustChangePasswordFilter extends OncePerRequestFilter {
     private static boolean isAllowedWhilePasswordChangeRequired(HttpServletRequest request) {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         return path.equals("/account/password") || path.equals("/logout") || path.equals("/login")
-                || path.startsWith("/css/") || path.equals("/favicon.ico");
+                || path.startsWith("/css/") || path.equals("/js/forms.js") || path.equals("/favicon.ico");
     }
 }
